@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>虹線 NIJISEN — Video Threshold Sequencer</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar">
+  <div class="tb-left">
+    <button class="sq-btn led-green" id="btnPower" data-on="true" data-idx="01">AUDIO</button>
+    <button class="sq-btn led-red"   id="btnClear"    data-idx="02">CLR</button>
+    <button class="sq-btn led-amber" id="btnRandom"   data-idx="03">RND</button>
+    <button class="sq-btn led-green" id="btnExport"   data-idx="04">IMG</button>
+    <button class="sq-btn led-riso"  id="btnSrcAudio" data-on="false" data-idx="05">SRC</button>
+    <button class="sq-btn led-riso"  id="btnTest"     data-idx="06">TEST</button>
+
+    <div class="stepper" id="presetStep">
+      <button class="st-arrow" data-d="-1">&#9664;</button>
+      <div class="st-body">
+        <div>
+          <div class="st-label">PRESET</div>
+          <div class="st-val" id="presetVal">DEFAULT</div>
+        </div>
+        <div class="st-pips" id="presetPips"></div>
+      </div>
+      <button class="st-arrow" data-d="1">&#9654;</button>
+    </div>
+    <select id="selPreset" hidden>
+      <option value="default">default</option>
+      <option value="rain">rain</option>
+      <option value="glass">glass</option>
+      <option value="broken">broken</option>
+    </select>
+  </div>
+  <h1 class="tb-title">虹線 NIJISEN / 01 — video threshold sound engine</h1>
+  <div class="tb-right">
+    <div class="lay-pick">
+      <span class="lp-hd">LAYOUT</span>
+      <div class="seg small" id="segLayout">
+        <button data-v="auto" class="on">AUTO</button>
+        <button data-v="landscape">LAND</button>
+        <button data-v="portrait">PORT</button>
+      </div>
+    </div>
+    <span class="barcode"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    <span class="hud-read" id="statusText">idle</span>
+  </div>
+</header>
+
+<!-- ============ MAIN GRID ============ -->
+<main class="stage">
+
+  <aside class="rail rail-left">
+    <div class="rail-hd">SCL</div>
+    <div class="rail-group" id="railScale"></div>
+    <div class="rail-sep"></div>
+    <div class="rail-hd">QNT</div>
+    <div class="rail-group" id="railQuant"></div>
+    <canvas class="scatter" id="scatterL" width="92" height="240"></canvas>
+  </aside>
+
+  <section class="center">
+
+    <div class="viewport" id="viewport">
+      <canvas id="stageCanvas"></canvas>
+      <canvas id="overlayCanvas"></canvas>
+      <div class="dropzone" id="dropzone">
+        <div class="dz-inner">
+          <canvas class="dz-mark" id="dzMark" width="148" height="148"></canvas>
+          <div class="dz-txt">DROP VIDEO FILE&nbsp;&nbsp;/&nbsp;&nbsp;CLICK TO LOAD</div>
+          <div class="dz-sub">mp4 · webm · mov — 影片不會上傳，全部在本機運算</div>
+        </div>
+        <input type="file" id="fileInput" accept="video/*" hidden>
+      </div>
+      <div class="vp-corner tl">THRESHOLD / TRIGGER FIELD</div>
+      <div class="vp-corner br"><span id="hudCells">16 cells</span></div>
+    </div>
+
+    <!-- TRANSPORT -->
+    <div class="transport">
+      <button class="sq-btn wide led-green" id="btnPlay" data-idx="07">PLAY</button>
+      <button class="sq-btn wide led-riso" id="btnLoop" data-on="true" data-idx="08">LOOP</button>
+      <div class="tl-wrap" id="tlWrap"><canvas id="timeline"></canvas></div>
+      <div class="time-read"><span id="timeRead">0:00 <b>/</b> 0:00</span></div>
+      <button class="sq-btn wide led-amber" id="btnFile" data-idx="09">FILE</button>
+    </div>
+
+    <!-- CONSOLE : param bank + plate. display:contents in landscape,
+         a side column in portrait -->
+    <div class="console">
+
+    <!-- PARAM BANK -->
+    <div class="params panel">
+
+      <div class="pmod">
+        <div class="pmod-hd">[ DETECT ]</div>
+        <div class="seg" id="segMode">
+          <button data-v="motion" class="on">MOTION</button>
+          <button data-v="luma">LUMA</button>
+          <button data-v="edge">EDGE</button>
+        </div>
+        <div class="pmod-hd">[ LINES ]</div>
+        <div class="seg" id="segLines">
+          <button data-v="add">+H</button>
+          <button data-v="vert">+V</button>
+          <button data-v="del">DEL</button>
+        </div>
+      </div>
+
+      <div class="pdiv"></div>
+
+      <div class="pmod">
+        <div class="pmod-hd">[ FIELD / PITCH / CLOCK ]</div>
+        <div class="knobbank" id="knobBank"></div>
+      </div>
+
+      <div class="pdiv"></div>
+
+      <div class="pmod grow">
+        <div class="pmod-hd"><span>[ CELL ACTIVITY ]</span><span id="tallyRead">--</span></div>
+        <canvas id="tally" width="600" height="104"></canvas>
+      </div>
+
+    </div>
+
+    <!-- SPECTRUM PLATE -->
+    <div class="spectro-wrap">
+      <div class="sp-head">
+        <span class="sp-title">SPECTRUM PLATE — 觸線頻譜生成</span>
+        <div class="sp-tools">
+          <div class="seg small" id="segSpecMode">
+            <button data-v="scroll" class="on">SCROLL</button>
+            <button data-v="stack">STACK</button>
+            <button data-v="ring">RING</button>
+          </div>
+          <button class="sq-btn tiny led-red" id="btnSpecClear">CLR</button>
+          <button class="sq-btn tiny led-green" id="btnSpecSave">PNG</button>
+        </div>
+      </div>
+      <canvas id="specCanvas" width="1600" height="300"></canvas>
+    </div>
+
+    </div><!-- /console -->
+
+  </section>
+
+  <aside class="rail rail-right">
+    <div class="rail-hd">VCE</div>
+    <div class="rail-group" id="railVoice"></div>
+    <div class="rail-sep"></div>
+    <div class="rail-hd">FX</div>
+    <div class="rail-group" id="railFx"></div>
+    <div class="jp-label">觸れる線、鳴る色</div>
+  </aside>
+
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="statusbar" id="footBar"></footer>
+
+<!-- hidden parameter sources: the knobs read and write these -->
+<div hidden id="paramSrc">
+  <input type="range" id="pSens"  min="0.01" max="1"   step="0.01" value="0.18">
+  <input type="range" id="pCells" min="4"    max="48"  step="1"    value="16">
+  <input type="range" id="pHold"  min="30"   max="600" step="10"   value="120">
+  <input type="range" id="pBand"  min="1"    max="24"  step="1"    value="3">
+  <input type="range" id="pRoot"  min="24"   max="72"  step="1"    value="36">
+  <input type="range" id="pBpm"   min="40"   max="200" step="1"    value="96">
+  <input type="range" id="pVol"   min="0"    max="1"   step="0.01" value="0.8">
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/palette.js"></script>
+<script src="js/knob.js"></script>
+<script src="js/audio-engine.js"></script>
+<script src="js/detector.js"></script>
+<script src="js/spectro.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
