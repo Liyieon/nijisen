@@ -21,6 +21,9 @@
   }
 
   Spectro.prototype.setMode = function (m) { this.mode = m; };
+  /* the active scan-colour ramp, so the plate and the scan lines stay in sync */
+  Spectro.prototype.setRamp = function (r) { this.ramp = r && r.length ? r.slice() : null; };
+  Spectro.prototype.blend = function () { return AM.THEME === 'dark' ? 'screen' : 'multiply'; };
 
   Spectro.prototype.clear = function () {
     const c = this.ctx, W = this.W, H = this.H;
@@ -29,9 +32,9 @@
     c.fillStyle = AM.PAPER2; c.fillRect(0, 0, W, H);
 
     // 和紙 horizontal grain, so an exported plate still reads as paper
-    c.strokeStyle = 'rgba(90,100,115,.075)'; c.lineWidth = 1;
+    c.strokeStyle = AM.grain(.075); c.lineWidth = 1;
     for (let y = 0; y < H; y += 5) { c.beginPath(); c.moveTo(0, y + .5); c.lineTo(W, y + .5); c.stroke(); }
-    c.strokeStyle = 'rgba(90,100,115,.10)';
+    c.strokeStyle = AM.grain(.10);
     for (let y = 0; y < H; y += 41) { c.beginPath(); c.moveTo(0, y + .5); c.lineTo(W, y + .5); c.stroke(); }
 
     // scattered square field
@@ -44,7 +47,7 @@
     c.globalAlpha = 1;
 
     // registration marks, like a print plate
-    c.strokeStyle = 'rgba(20,24,29,.22)'; c.lineWidth = 1;
+    c.strokeStyle = AM.hair(.22); c.lineWidth = 1;
     for (let i = 1; i < 8; i++) {
       const x = Math.round(W * i / 8) + .5;
       c.beginPath(); c.moveTo(x, 0); c.lineTo(x, 7); c.moveTo(x, H); c.lineTo(x, H - 7); c.stroke();
@@ -72,12 +75,17 @@
     for (let y = 0; y < H; y++) {
       const t = 1 - y / (H - 1);                 // top = high freq
       const v = spec[binAt(t, n)] / 255;
-      const acc = AM.hexToRgb(AM.PALETTE[Math.floor(t * (AM.PALETTE.length - 1))]);
+      const ramp = this.ramp && this.ramp.length ? this.ramp : AM.PALETTE;
+      const acc = AM.hexToRgb(ramp[Math.floor(t * (ramp.length - 1))]);
       const k = playing ? Math.pow(v, 1.35) : 0;
+      const dark = AM.THEME === 'dark';
+      const tr = dark ? acc.r * 0.85 + 60 : acc.r * 0.55 + 20;
+      const tg = dark ? acc.g * 0.85 + 60 : acc.g * 0.55 + 20;
+      const tb = dark ? acc.b * 0.85 + 60 : acc.b * 0.55 + 20;
       const i = y * 4;
-      px[i] = AM.lerp(base.r, acc.r * 0.55 + 20, k);
-      px[i + 1] = AM.lerp(base.g, acc.g * 0.55 + 20, k);
-      px[i + 2] = AM.lerp(base.b, acc.b * 0.55 + 20, k);
+      px[i] = AM.lerp(base.r, tr, k);
+      px[i + 1] = AM.lerp(base.g, tg, k);
+      px[i + 2] = AM.lerp(base.b, tb, k);
       px[i + 3] = 255;
     }
     c.putImageData(this.col, W - 1, 0);
@@ -99,7 +107,7 @@
 
     const w = this.mode === 'scroll' ? 2 : Math.max(2, Math.round(2 + ev.vel * 7));
 
-    c.globalCompositeOperation = 'multiply';
+    c.globalCompositeOperation = this.blend();
     // FFT smear of this instant
     if (spec) {
       const n = spec.length;
@@ -118,7 +126,7 @@
     c.fillStyle = col;
     c.fillRect(x - (w >> 1) - 1, py - 2, w + 2, 5);
     // ink tick, keeps the plate graphic
-    c.fillStyle = 'rgba(20,24,29,.55)';
+    c.fillStyle = AM.hair(.55);
     c.fillRect(x - (w >> 1) - 1, py + 4, w + 2, 1);
     c.globalCompositeOperation = 'source-over';
     c.globalAlpha = 1;
@@ -130,7 +138,7 @@
     const rMax = Math.min(W, H) * 0.46;
     const ang = AM.clamp(ev.nx, 0, 1) * Math.PI * 2 - Math.PI / 2;
     c.save();
-    c.globalCompositeOperation = 'multiply';
+    c.globalCompositeOperation = this.blend();
     if (spec) {
       const n = spec.length, steps = 90;
       for (let i = 0; i < steps; i++) {

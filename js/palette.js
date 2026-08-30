@@ -10,10 +10,42 @@
     '#7a8496', '#3c6e5c', '#88a2c0', '#5e6b78'
   ];
 
-  const PAPER = '#F0F0F0';   // paper ground
-  const PAPER2 = '#e8e9ea';  // plate ground
-  const RISO = '#3f6fa8';
-  const INK = '#14181d';
+  /* two grounds. Canvas code reads AM.PAPER / AM.PAPER2 / AM.INK / AM.INK_SOFT
+     / AM.HAIR, so switching the theme repaints every drawn surface too. */
+  const THEMES = {
+    light: {
+      paper: '#F0F0F0', paper2: '#e8e9ea', ink: '#14181d', inkSoft: '#525c66',
+      hair: 'rgba(20,24,29,', grain: 'rgba(70,88,110,', stageBg: '#0c0e11',
+      onVideo: 'rgba(255,255,255,', riso: '#3f6fa8'
+    },
+    dark: {
+      paper: '#12161b', paper2: '#1b2027', ink: '#e7ecf2', inkSoft: '#9dabb8',
+      hair: 'rgba(231,236,242,', grain: 'rgba(150,175,200,', stageBg: '#08090c',
+      onVideo: 'rgba(255,255,255,', riso: '#6ba8e0'
+    }
+  };
+  let THEME = 'light';
+
+  let PAPER = THEMES.light.paper;
+  let PAPER2 = THEMES.light.paper2;
+  let INK = THEMES.light.ink;
+  let INK_SOFT = THEMES.light.inkSoft;
+  let RISO = THEMES.light.riso;
+
+  /* alpha helpers so drawing code never hardcodes a ground-dependent colour */
+  function hair(a) { return THEMES[THEME].hair + a + ')'; }
+  function grain(a) { return THEMES[THEME].grain + a + ')'; }
+  function onVideo(a) { return THEMES[THEME].onVideo + a + ')'; }
+
+  function setTheme(name) {
+    THEME = THEMES[name] ? name : 'light';
+    const t = THEMES[THEME];
+    PAPER = t.paper; PAPER2 = t.paper2; INK = t.ink; INK_SOFT = t.inkSoft; RISO = t.riso;
+    g.AM.PAPER = PAPER; g.AM.PAPER2 = PAPER2; g.AM.INK = INK;
+    g.AM.INK_SOFT = INK_SOFT; g.AM.RISO = RISO;
+    g.AM.THEME = THEME; g.AM.STAGE_BG = t.stageBg;
+    return THEME;
+  }
 
   /* scan-line colour schemes. Each is a ramp used across the cells of a line;
      a one-entry ramp paints the whole line in a single colour. */
@@ -67,7 +99,7 @@
     for (let i = 0; i < ramp.length; i++) {
       const c = hexToRgb(ramp[i]);
       const d = (c.r - r) * (c.r - r) + (c.g - gg) * (c.g - gg) + (c.b - b) * (c.b - b);
-      if (d < bestD) { bestD = d; best = PALETTE[i]; }
+      if (d < bestD) { bestD = d; best = ramp[i]; }
     }
     const t = hexToRgb(best);
     return { r: lerp(r, t.r, amount), g: lerp(gg, t.g, amount), b: lerp(b, t.b, amount) };
@@ -83,6 +115,14 @@
   g.AM.PAPER = PAPER;
   g.AM.PAPER2 = PAPER2;
   g.AM.RISO = RISO;
+  g.AM.INK_SOFT = INK_SOFT;
+  g.AM.THEME = THEME;
+  g.AM.THEMES = THEMES;
+  g.AM.STAGE_BG = THEMES.light.stageBg;
+  g.AM.setTheme = setTheme;
+  g.AM.hair = hair;
+  g.AM.grain = grain;
+  g.AM.onVideo = onVideo;
   g.AM.SCHEMES = SCHEMES;
   g.AM.SCHEME_KEYS = SCHEME_KEYS;
   g.AM.INK = INK;

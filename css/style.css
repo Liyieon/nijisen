@@ -52,6 +52,65 @@
   --notch:10px;
 }
 
+/* ============================================================
+   DARK — same structure, inverted ground. Body text sits at
+   #e7ecf2 on #12161b (about 14:1), labels at #9dabb8 (about 7:1).
+   ============================================================ */
+body[data-theme="dark"]{
+  --washi:#12161b;
+  --washi-2:#1b2027;
+  --washi-3:#252c35;
+  --ink:#e7ecf2;
+  --ink-soft:#9dabb8;
+  --rule:#8a97a5;
+  --hair:rgba(231,236,242,.30);
+  --hair-2:rgba(231,236,242,.15);
+
+  --riso:#6ba8e0;
+  --red:#e0736a;
+  --orange:#dd9a63;
+  --amber:#d8bd6a;
+  --green:#5fae8c;
+  --sage:#8fc0b8;
+  --teal:#63b6cc;
+  --blue:#6ba8e0;
+  --indigo:#8a90d8;
+  --purple:#a48cd0;
+  --pink:#cf93ad;
+  --brown:#a8b4c2;
+}
+body[data-theme="dark"]{
+  background-image:
+    repeating-linear-gradient(0deg, rgba(150,175,200,.045) 0 1px, rgba(0,0,0,0) 1px 5px),
+    repeating-linear-gradient(0deg, rgba(150,175,200,.030) 0 1px, rgba(0,0,0,0) 1px 13px),
+    repeating-linear-gradient(0deg, rgba(150,175,200,.055) 0 1px, rgba(0,0,0,0) 1px 41px);
+}
+body[data-theme="dark"]::before{opacity:.10;mix-blend-mode:screen}
+body[data-theme="dark"] .panel{background:rgba(231,236,242,.035)}
+/* filled states invert: light plate, dark glyph */
+body[data-theme="dark"] .sq-btn[data-on="true"],
+body[data-theme="dark"] .seg button.on,
+body[data-theme="dark"] .dia.on,
+body[data-theme="dark"] .cir.on,
+body[data-theme="dark"] .sw.on{background:var(--ink);color:var(--washi);border-color:var(--ink)}
+body[data-theme="dark"] .sq-btn:hover,
+body[data-theme="dark"] .dia:hover,
+body[data-theme="dark"] .cir:hover{background:var(--washi-3)}
+body[data-theme="dark"] .sq-btn.dark{background:var(--ink);color:var(--washi)}
+body[data-theme="dark"] .sw.on .sw-cap{color:var(--washi)}
+body[data-theme="dark"] .cir.on .collar .tk{stroke:rgba(18,22,27,.45)}
+body[data-theme="dark"] .cir.on .tag{color:rgba(18,22,27,.7)}
+body[data-theme="dark"] .cir.on .spiro{filter:none;opacity:.30}
+body[data-theme="dark"] .stepper .st-arrow:hover{background:var(--ink);color:var(--washi)}
+body[data-theme="dark"] .linepick .lp-arrow:hover{background:var(--ink);color:var(--washi)}
+body[data-theme="dark"] .toast{background:var(--ink);color:var(--washi)}
+body[data-theme="dark"] .toast::before{background:var(--riso)}
+body[data-theme="dark"] .hud-read.live{border-color:var(--green);color:var(--green)}
+body[data-theme="dark"] #specCanvas,
+body[data-theme="dark"] .viewport{border-color:var(--hair)}
+body[data-theme="dark"] .dropzone{background:var(--washi)}
+body[data-theme="dark"] .stagebar{background:rgba(8,9,12,.9);border-color:rgba(231,236,242,.28)}
+
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 
@@ -419,16 +478,32 @@ body.stage-only::before{opacity:.05}
 body.stage-only .topbar,
 body.stage-only .rail,
 body.stage-only .transport,
-body.stage-only .console,
+body.stage-only .params,
 body.stage-only .statusbar{display:none}
+
+/* the plate rides along the bottom of the stage */
+body.stage-only .console{
+  display:block;position:fixed;left:0;right:0;bottom:0;
+  height:25vh;min-height:120px;z-index:999;padding:0;
+  background:linear-gradient(0deg, rgba(8,9,12,.92), rgba(8,9,12,.55));
+  border-top:1px solid rgba(231,236,242,.22);
+}
+body.stage-only .spectro-wrap{
+  display:flex;height:100%;padding:8px 14px 12px;gap:6px;
+}
+body.stage-only .sp-head{display:none}
+body.stage-only #specCanvas{flex:1;height:auto;min-height:0;width:100%;border-color:rgba(231,236,242,.25)}
+body.stage-only.stage-noplate .console{display:none}
 body.stage-only .stage{display:block;height:100%}
 body.stage-only .center{padding:0;height:100%;display:block;gap:0}
 body.stage-only .viewport{
-  height:100%;width:100%;border:0;clip-path:none;background:#0c0e11;
+  height:75vh;width:100%;border:0;clip-path:none;background:#0c0e11;
 }
+body.stage-only.stage-noplate .viewport{height:100%}
 body.stage-only .vp-corner{opacity:.35}
-body.stage-only .stagebar{display:flex}
-body.stage-only .toast{bottom:74px}
+body.stage-only .stagebar{display:flex;bottom:calc(25vh + 14px)}
+body.stage-only.stage-noplate .stagebar{bottom:18px}
+body.stage-only .toast{bottom:calc(25vh + 62px)}
 
 /* ---------------- footer ---------------- */
 .statusbar{
@@ -564,7 +639,12 @@ body.stage-only .toast{bottom:74px}
   .colchip{width:34px;height:26px}
   .stagebar{bottom:10px;gap:4px;padding:6px 8px;flex-wrap:wrap;max-width:94vw;justify-content:center;opacity:1}
   .stagebar .sb-read{min-width:64px}
-  body.stage-only .viewport{height:100vh}
+  body.stage-only .viewport{height:66vh}
+  body.stage-only.stage-noplate .viewport{height:100vh}
+  body.stage-only .console{height:34vh;min-height:110px}
+  body.stage-only .spectro-wrap{padding:6px 10px 10px}
+  body.stage-only .stagebar{bottom:calc(34vh + 10px)}
+  body.stage-only.stage-noplate .stagebar{bottom:10px}
   .statusbar{gap:10px 14px;padding:8px 12px;font-size:9px}
   .toast{bottom:16px;font-size:9.5px;max-width:88vw}
 

@@ -23,7 +23,9 @@
     scheme: 'SPECTRUM',       // scan-line colour scheme
     custom: '#3f8296',        // custom scan colour
     colorTarget: 'all',       // 'all' | 'sel'
-    stageOnly: false
+    stageOnly: false,
+    stagePlate: true,         // show the plate inside STAGE
+    theme: 'light'
   };
 
   const engine = new AM.AudioEngine();
@@ -153,13 +155,13 @@
     const mid = Math.round(h * 0.62);
 
     // baseline + measured ticks
-    c.strokeStyle = 'rgba(22,22,15,.42)'; c.lineWidth = 1;
+    c.strokeStyle = AM.hair(.42); c.lineWidth = 1;
     c.beginPath(); c.moveTo(0, mid + .5); c.lineTo(w, mid + .5); c.stroke();
     const N = 40;
     for (let i = 0; i <= N; i++) {
       const x = Math.round(w * i / N) + .5;
       const major = i % 5 === 0;
-      c.strokeStyle = major ? 'rgba(22,22,15,.5)' : 'rgba(22,22,15,.22)';
+      c.strokeStyle = major ? AM.hair(.5) : AM.hair(.22);
       c.beginPath(); c.moveTo(x, mid); c.lineTo(x, mid - (major ? 9 : 5) * dpr); c.stroke();
     }
     if (!video.duration) return;
@@ -167,7 +169,7 @@
     // elapsed as riso tally bars
     const t = video.currentTime / video.duration;
     const px = t * w;
-    c.fillStyle = 'rgba(91,143,201,.85)';
+    c.fillStyle = AM.RISO;
     for (let x = 0; x < px; x += 5 * dpr) c.fillRect(x, mid - 4 * dpr, 2 * dpr, 4 * dpr);
 
     // playhead
@@ -182,6 +184,20 @@
     if (!isFinite(t)) t = 0;
     const m = Math.floor(t / 60), s = Math.floor(t % 60);
     return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  /* ---------------- theme ---------------- */
+  function setTheme(name, quiet) {
+    S.theme = AM.setTheme(name);
+    document.body.dataset.theme = S.theme;
+    document.querySelectorAll('#segTheme button').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.v === S.theme);
+    });
+    // every drawn surface carries the ground with it
+    drawOrnaments();
+    if (spectro) { spectro.clear(); }
+    requestAnimationFrame(function () { sizeCanvases(); computeRect(); resizePlate(); });
+    if (!quiet) toast('theme: ' + S.theme.toUpperCase() + ' — 圖版已重新鋪底');
   }
 
   /* ---------------- stage-only mode ----------------
@@ -217,15 +233,32 @@
     $('#sbAddH').addEventListener('click', function () { addLine('h'); });
     $('#sbAddV').addEventListener('click', function () { addLine('v'); });
     $('#sbDel').addEventListener('click', function () { deleteSelected(); });
+    $('#sbPlate').addEventListener('click', function () {
+      S.stagePlate = !S.stagePlate;
+      this.dataset.on = S.stagePlate ? 'true' : 'false';
+      document.body.classList.toggle('stage-noplate', !S.stagePlate);
+      requestAnimationFrame(function () { sizeCanvases(); computeRect(); resizePlate(); });
+    });
     $('#sbPrev').addEventListener('click', function () { cycleSelect(-1); });
     $('#sbNext').addEventListener('click', function () { cycleSelect(1); });
     $('#btnStage').addEventListener('click', function () { setStageOnly(!S.stageOnly); });
+  }
+
+  function hexA(hex, a) {
+    const c = AM.hexToRgb(hex);
+    return 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + AM.clamp(a, 0, 1).toFixed(3) + ')';
   }
 
   /* ---------------- scan colour ---------------- */
   function ramp() {
     const sc = AM.SCHEMES[S.scheme];
     return (sc && sc.colors.length) ? sc.colors : AM.PALETTE;
+  }
+  /* the plate paints with the same ramp as the scan lines */
+  function syncPlateRamp() {
+    if (!spectro) return;
+    const sel = S.selected;
+    spectro.setRamp(sel && sel.color && S.colorTarget === 'sel' ? [sel.color] : ramp());
   }
   /* colour of one cell of one line: a per-line override wins over the scheme */
   function lineColor(line, cell) {
@@ -242,11 +275,11 @@
       S.custom = hex;
       toast('全部線色 ' + hex);
     }
-    paintColorUI();
+    paintColorUI(); syncPlateRamp();
   }
   function clearOverrides() {
     for (const l of det.lines) l.color = null;
-    paintColorUI();
+    paintColorUI(); syncPlateRamp();
   }
 
   /* ---------------- layout ---------------- */
@@ -508,7 +541,7 @@
         S.scheme = k;
         if (S.colorTarget === 'sel' && S.selected) S.selected.color = null;
         else clearOverrides();
-        paintColorUI();
+        paintColorUI(); syncPlateRamp();
         toast('scan colour: ' + sc.label);
       });
       box.appendChild(b);
@@ -734,7 +767,7 @@
     const base = h - 9 * dpr;
 
     // ground rule + cell ticks
-    c.strokeStyle = 'rgba(22,22,15,.45)'; c.lineWidth = 1;
+    c.strokeStyle = AM.hair(.45); c.lineWidth = 1;
     c.beginPath(); c.moveTo(0, base + .5); c.lineTo(w, base + .5); c.stroke();
 
     if (!line || !line.prevAct) return;
@@ -752,7 +785,7 @@
       const bw = Math.max(1, Math.min(2.4 * dpr, cw / 6));
       const gap = Math.max(1, bw * 1.7);
       const hgt = Math.max(2 * dpr, act / 1.2 * (base - 6 * dpr));
-      c.fillStyle = 'rgba(91,143,201,' + (0.35 + act * 0.6).toFixed(2) + ')';
+      c.fillStyle = AM.rgbToCss.length ? hexA(AM.RISO, 0.35 + act * 0.6) : AM.RISO;
       for (let b = 0; b < bars; b++) {
         const x = x0 + cw / 2 - (bars - 1) * gap / 2 + b * gap - bw / 2;
         c.fillRect(x, base - hgt, bw, hgt);
@@ -768,13 +801,13 @@
       }
       // cell index rule every 4
       if (i % 4 === 0) {
-        c.strokeStyle = 'rgba(22,22,15,.28)';
+        c.strokeStyle = AM.hair(.28);
         c.beginPath(); c.moveTo(x0 + .5, base); c.lineTo(x0 + .5, base + 6 * dpr); c.stroke();
       }
     }
     // sensitivity line across the meter
     const sy = base - det.sens / 1.2 * (base - 6 * dpr);
-    c.strokeStyle = 'rgba(196,69,59,.75)'; c.setLineDash([4 * dpr, 3 * dpr]);
+    c.strokeStyle = hexA(P[7], .8); c.setLineDash([4 * dpr, 3 * dpr]);
     c.beginPath(); c.moveTo(0, sy + .5); c.lineTo(w, sy + .5); c.stroke();
     c.setLineDash([]);
 
@@ -860,7 +893,7 @@
       }
 
       // handle + label
-      c.fillStyle = sel ? lineHue : '#e8e9ea';
+      c.fillStyle = sel ? lineHue : AM.PAPER2;
       if (horiz) c.fillRect(R.x - 4 * dpr, py - 4 * dpr, 8 * dpr, 8 * dpr);
       else c.fillRect(px - 4 * dpr, R.y - 4 * dpr, 8 * dpr, 8 * dpr);
       c.fillStyle = 'rgba(239,233,220,.9)';
@@ -880,7 +913,7 @@
 
     if (video.readyState >= 2) {
       computeRect();
-      sctx.fillStyle = '#111';
+      sctx.fillStyle = AM.STAGE_BG;
       sctx.fillRect(0, 0, stage.width, stage.height);
       sctx.drawImage(video, vrect.x, vrect.y, vrect.w, vrect.h);
 
@@ -973,6 +1006,9 @@
     buildStepper();
     buildColorUI();
     buildStageBar();
+    bindSeg('#segTheme', function (v) { setTheme(v); });
+    setTheme('light', true);
+    syncPlateRamp();
     paintLineUI();
     drawOrnaments();
     updateFoot();
@@ -986,24 +1022,24 @@
       // survey target: crosshair, graduated ring, corner brackets
       const c = dz.getContext('2d'), M = 74;
       c.clearRect(0, 0, 148, 148);
-      c.strokeStyle = 'rgba(20,24,29,.5)'; c.lineWidth = 1;
+      c.strokeStyle = AM.hair(.5); c.lineWidth = 1;
       c.beginPath(); c.arc(M, M, 48, 0, 6.2832); c.stroke();
-      c.strokeStyle = 'rgba(20,24,29,.28)';
+      c.strokeStyle = AM.hair(.28);
       c.beginPath(); c.arc(M, M, 62, 0, 6.2832); c.stroke();
       for (let i = 0; i < 48; i++) {
         const a = i * Math.PI / 24, big = i % 4 === 0;
-        c.strokeStyle = big ? 'rgba(20,24,29,.55)' : 'rgba(20,24,29,.25)';
+        c.strokeStyle = big ? AM.hair(.55) : AM.hair(.25);
         c.beginPath();
         c.moveTo(M + Math.cos(a) * 62, M + Math.sin(a) * 62);
         c.lineTo(M + Math.cos(a) * (62 - (big ? 9 : 5)), M + Math.sin(a) * (62 - (big ? 9 : 5)));
         c.stroke();
       }
-      c.strokeStyle = 'rgba(63,111,168,.85)'; c.lineWidth = 1;
+      c.strokeStyle = hexA(AM.RISO, .85); c.lineWidth = 1;
       c.beginPath(); c.moveTo(M - 30, M); c.lineTo(M - 8, M);
       c.moveTo(M + 8, M); c.lineTo(M + 30, M);
       c.moveTo(M, M - 30); c.lineTo(M, M - 8);
       c.moveTo(M, M + 8); c.lineTo(M, M + 30); c.stroke();
-      c.fillStyle = 'rgba(63,111,168,.9)';
+      c.fillStyle = hexA(AM.RISO, .9);
       c.fillRect(M - 2, M - 2, 4, 4);
     }
     const sc = $('#scatterL');
