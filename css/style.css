@@ -501,6 +501,21 @@ body.stage-only .viewport{
 }
 body.stage-only.stage-noplate .viewport{height:100%}
 body.stage-only .vp-corner{opacity:.35}
+/* portrait clip on a wide screen: the plate stands beside the video */
+@media (min-width:761px){
+  body.stage-only[data-layout="portrait"] .viewport{height:100%;width:70vw}
+  body.stage-only[data-layout="portrait"] .console{
+    top:0;bottom:0;right:0;left:auto;width:30vw;min-width:240px;height:auto;
+    border-top:0;border-left:1px solid rgba(231,236,242,.22);
+    background:linear-gradient(270deg, rgba(8,9,12,.92), rgba(8,9,12,.55));
+  }
+  body.stage-only[data-layout="portrait"] .spectro-wrap{padding:14px 12px}
+  body.stage-only[data-layout="portrait"].stage-noplate .viewport{width:100%}
+  body.stage-only[data-layout="portrait"] .stagebar{left:35vw;bottom:18px}
+  body.stage-only[data-layout="portrait"].stage-noplate .stagebar{left:50%}
+  body.stage-only[data-layout="portrait"] .toast{bottom:74px}
+}
+
 body.stage-only .stagebar{display:flex;bottom:calc(25vh + 14px)}
 body.stage-only.stage-noplate .stagebar{bottom:18px}
 body.stage-only .toast{bottom:calc(25vh + 62px)}
@@ -642,6 +657,9 @@ body.stage-only .toast{bottom:calc(25vh + 62px)}
   body.stage-only .viewport{height:66vh}
   body.stage-only.stage-noplate .viewport{height:100vh}
   body.stage-only .console{height:34vh;min-height:110px}
+  /* the mobile fixed plate height must not win inside STAGE */
+  body.stage-only #specCanvas,
+  body.stage-only[data-layout="portrait"] #specCanvas{height:auto;flex:1;min-height:0}
   body.stage-only .spectro-wrap{padding:6px 10px 10px}
   body.stage-only .stagebar{bottom:calc(34vh + 10px)}
   body.stage-only.stage-noplate .stagebar{bottom:10px}

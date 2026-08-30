@@ -14,7 +14,9 @@
     this.ctx = canvas.getContext('2d', { willReadFrequently: false });
     this.W = canvas.width; this.H = canvas.height;
     this.mode = 'scroll';
+    this.orient = 'h';           // 'h': time runs left->right. 'v': top->bottom
     this.col = this.ctx.createImageData(1, this.H);
+    this.row = this.ctx.createImageData(this.W, 1);
     this.ringAngle = 0;
     this.frames = 0;
     this.clear();
@@ -23,6 +25,14 @@
   Spectro.prototype.setMode = function (m) { this.mode = m; };
   /* the active scan-colour ramp, so the plate and the scan lines stay in sync */
   Spectro.prototype.setRamp = function (r) { this.ramp = r && r.length ? r.slice() : null; };
+  /* a tall plate reads better with time running downwards */
+  Spectro.prototype.setOrient = function (o) {
+    o = o === 'v' ? 'v' : 'h';
+    if (o === this.orient) return false;
+    this.orient = o;
+    this.clear();
+    return true;
+  };
   Spectro.prototype.blend = function () { return AM.THEME === 'dark' ? 'screen' : 'multiply'; };
 
   Spectro.prototype.clear = function () {
@@ -31,11 +41,19 @@
     c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
     c.fillStyle = AM.PAPER2; c.fillRect(0, 0, W, H);
 
-    // 和紙 horizontal grain, so an exported plate still reads as paper
+    // paper grain, always across the time axis
+    const vert = this.orient === 'v';
+    const gLen = vert ? W : H;
+    const gline = function (p) {
+      c.beginPath();
+      if (vert) { c.moveTo(p + .5, 0); c.lineTo(p + .5, H); }
+      else { c.moveTo(0, p + .5); c.lineTo(W, p + .5); }
+      c.stroke();
+    };
     c.strokeStyle = AM.grain(.075); c.lineWidth = 1;
-    for (let y = 0; y < H; y += 5) { c.beginPath(); c.moveTo(0, y + .5); c.lineTo(W, y + .5); c.stroke(); }
+    for (let y = 0; y < gLen; y += 5) gline(y);
     c.strokeStyle = AM.grain(.10);
-    for (let y = 0; y < H; y += 41) { c.beginPath(); c.moveTo(0, y + .5); c.lineTo(W, y + .5); c.stroke(); }
+    for (let y = 0; y < gLen; y += 41) gline(y);
 
     // scattered square field
     for (let i = 0; i < 140; i++) {
@@ -66,14 +84,18 @@
   Spectro.prototype.frame = function (spec, playing) {
     if (!spec || this.mode !== 'scroll') return;
     const c = this.ctx, W = this.W, H = this.H;
-    // shift left by 1px
+    const vert = this.orient === 'v';
+    // shift the sheet one pixel against the time axis
     c.globalCompositeOperation = 'source-over';
-    c.drawImage(this.cv, -1, 0);
+    c.drawImage(this.cv, vert ? 0 : -1, vert ? -1 : 0);
 
-    const px = this.col.data, n = spec.length;
+    const buf = vert ? this.row : this.col;
+    const px = buf.data, n = spec.length;
+    const steps = vert ? W : H;
     const base = AM.hexToRgb(AM.PAPER2);
-    for (let y = 0; y < H; y++) {
-      const t = 1 - y / (H - 1);                 // top = high freq
+    for (let y = 0; y < steps; y++) {
+      // horizontal plate: top = high freq. vertical plate: right = high freq
+      const t = vert ? y / (steps - 1) : 1 - y / (steps - 1);
       const v = spec[binAt(t, n)] / 255;
       const ramp = this.ramp && this.ramp.length ? this.ramp : AM.PALETTE;
       const acc = AM.hexToRgb(ramp[Math.floor(t * (ramp.length - 1))]);
@@ -88,7 +110,7 @@
       px[i + 2] = AM.lerp(base.b, tb, k);
       px[i + 3] = 255;
     }
-    c.putImageData(this.col, W - 1, 0);
+    c.putImageData(buf, vert ? 0 : W - 1, vert ? H - 1 : 0);
     this.frames++;
   };
 
@@ -96,38 +118,54 @@
      ev : {nx, ny, vel, r,g,b, cell, cells, noteName} */
   Spectro.prototype.stamp = function (ev, spec) {
     const c = this.ctx, W = this.W, H = this.H;
-    const snapped = AM.paletteSnap(ev.r, ev.g, ev.b, 0.62, ev.ramp);
+    // a multi-colour ramp keeps some of the video's own colour as memory;
+    // a single-colour scheme (MONO, PAPER, a per-line override) snaps hard so
+    // the plate really prints in that one ink
+    const single = ev.ramp && ev.ramp.length === 1;
+    const snapped = AM.paletteSnap(ev.r, ev.g, ev.b, single ? 0.94 : 0.74, ev.ramp);
     const col = AM.rgbToCss(snapped.r, snapped.g, snapped.b, 1);
 
     if (this.mode === 'ring') return this._stampRing(ev, spec, col);
 
-    const x = this.mode === 'scroll'
-      ? W - 1
-      : Math.round(AM.clamp(ev.nx, 0, 1) * (W - 3)) + 1;
+    const vert = this.orient === 'v';
+    const timeLen = vert ? H : W;          // along the time axis
+    const freqLen = vert ? W : H;          // across the frequency axis
 
+    // where this trigger lands on the time axis
+    const x = this.mode === 'scroll'
+      ? timeLen - 1
+      : Math.round(AM.clamp(ev.nx, 0, 1) * (timeLen - 3)) + 1;
     const w = this.mode === 'scroll' ? 2 : Math.max(2, Math.round(2 + ev.vel * 7));
 
+    // paint one band across the frequency axis, whichever way it runs
+    const band = function (pos, thick, alpha) {
+      c.globalAlpha = alpha;
+      if (vert) c.fillRect(pos, x - (w >> 1), thick, w);
+      else c.fillRect(x - (w >> 1), pos, w, thick);
+    };
+
     c.globalCompositeOperation = this.blend();
-    // FFT smear of this instant
     if (spec) {
       const n = spec.length;
-      for (let y = 0; y < H; y++) {
-        const t = 1 - y / (H - 1);
+      for (let y = 0; y < freqLen; y++) {
+        const t = vert ? y / (freqLen - 1) : 1 - y / (freqLen - 1);
         const v = spec[binAt(t, n)] / 255;
         if (v < 0.06) continue;
-        c.globalAlpha = AM.clamp(v * 0.85 * (0.4 + ev.vel * 0.6), 0, 1);
         c.fillStyle = col;
-        c.fillRect(x - (w >> 1), y, w, 1);
+        band(y, 1, AM.clamp(v * 0.85 * (0.4 + ev.vel * 0.6), 0, 1));
       }
     }
-    // the note itself: a solid block at the pitch height
+    // the note itself: a solid block at its pitch position
     c.globalAlpha = 1;
-    const py = Math.round((1 - AM.clamp(ev.pitchNorm === undefined ? ev.nx : ev.pitchNorm, 0, 1)) * (H - 10)) + 4;
+    const pitch = AM.clamp(ev.pitchNorm === undefined ? ev.nx : ev.pitchNorm, 0, 1);
+    const py = Math.round((vert ? pitch : 1 - pitch) * (freqLen - 10)) + 4;
     c.fillStyle = col;
-    c.fillRect(x - (w >> 1) - 1, py - 2, w + 2, 5);
+    if (vert) c.fillRect(py - 2, x - (w >> 1) - 1, 5, w + 2);
+    else c.fillRect(x - (w >> 1) - 1, py - 2, w + 2, 5);
     // ink tick, keeps the plate graphic
     c.fillStyle = AM.hair(.55);
-    c.fillRect(x - (w >> 1) - 1, py + 4, w + 2, 1);
+    if (vert) c.fillRect(py + 4, x - (w >> 1) - 1, 1, w + 2);
+    else c.fillRect(x - (w >> 1) - 1, py + 4, w + 2, 1);
     c.globalCompositeOperation = 'source-over';
     c.globalAlpha = 1;
   };
@@ -173,6 +211,7 @@
     this.cv.width = w; this.cv.height = h;
     this.W = w; this.H = h;
     this.col = this.ctx.createImageData(1, h);
+    this.row = this.ctx.createImageData(w, 1);
     this.clear();
     this.ctx.drawImage(tmp, 0, 0, w, h);
   };

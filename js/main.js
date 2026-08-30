@@ -309,6 +309,10 @@
     if (r.width < 10 || r.height < 10) return;
     const k = Math.min(2, dpr);
     spectro.resize(Math.round(r.width * k), Math.round(r.height * k));
+    // a plate taller than it is wide runs its time axis downwards
+    if (spectro.setOrient(r.height > r.width * 1.05 ? 'v' : 'h')) {
+      toast('圖版轉為' + (spectro.orient === 'v' ? '直式（時間由上往下）' : '橫式（時間由左往右）'));
+    }
   }
 
   /* the video decides the layout unless the operator has picked one */

@@ -50,7 +50,13 @@
   /* scan-line colour schemes. Each is a ramp used across the cells of a line;
      a one-entry ramp paints the whole line in a single colour. */
   const SCHEMES = {
-    SPECTRUM: { label: 'SPECTRUM', colors: PALETTE.slice() },
+    /* a real hue sweep — the UI palette is cool on purpose, the scan colours
+       are not bound to it */
+    SPECTRUM: { label: 'SPECTRUM', colors: [
+      '#d1443c', '#e0703a', '#e5a33c', '#d8c94a',
+      '#8fbe4c', '#3fa06a', '#2f9c95', '#3f86bd',
+      '#4a5fb5', '#7355ad', '#a9509b', '#c8497a'
+    ] },
     CYANO:    { label: 'CYANO',    colors: ['#0d2b45', '#1c4f7c', '#2f6f9f', '#4d90bd', '#7ab3d4', '#a8cee2'] },
     STEEL:    { label: 'STEEL',    colors: ['#3a4653', '#4d5c6b', '#647485', '#8494a5', '#a6b4c2'] },
     NEON:     { label: 'NEON',     colors: ['#00b3a4', '#2ad4c1', '#5be0ff', '#3f8cff', '#8b6cff'] },
