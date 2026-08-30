@@ -2,16 +2,31 @@
 (function (g) {
   'use strict';
 
+  /* cool, cyanotype-leaning: blues and slates carry the set, the warm
+     accents are desaturated so they read as prints, not stickers */
   const PALETTE = [
-    '#c4453b', '#d97b2b', '#dfae35', '#4f7f4f',
-    '#3c8b94', '#3f6fa8', '#4a4f8f', '#6b4c8f',
-    '#bd7f92', '#7d5a3c', '#5b8fc9', '#7fa892'
+    '#2f5d8a', '#3f8296', '#4e7f7a', '#5b8fc9',
+    '#4a4f8f', '#6b5c8f', '#8a5f77', '#a8564f',
+    '#7a8496', '#3c6e5c', '#88a2c0', '#5e6b78'
   ];
 
-  const PAPER = '#FCFAF2';   // washi ground
-  const PAPER2 = '#f5f2e7';  // plate ground
-  const RISO = '#5b8fc9';
-  const INK = '#16160f';
+  const PAPER = '#F0F0F0';   // paper ground
+  const PAPER2 = '#e8e9ea';  // plate ground
+  const RISO = '#3f6fa8';
+  const INK = '#14181d';
+
+  /* scan-line colour schemes. Each is a ramp used across the cells of a line;
+     a one-entry ramp paints the whole line in a single colour. */
+  const SCHEMES = {
+    SPECTRUM: { label: 'SPECTRUM', colors: PALETTE.slice() },
+    CYANO:    { label: 'CYANO',    colors: ['#0d2b45', '#1c4f7c', '#2f6f9f', '#4d90bd', '#7ab3d4', '#a8cee2'] },
+    STEEL:    { label: 'STEEL',    colors: ['#3a4653', '#4d5c6b', '#647485', '#8494a5', '#a6b4c2'] },
+    NEON:     { label: 'NEON',     colors: ['#00b3a4', '#2ad4c1', '#5be0ff', '#3f8cff', '#8b6cff'] },
+    EMBER:    { label: 'EMBER',    colors: ['#7d3a3a', '#a8564f', '#c47a4a', '#d9a25c'] },
+    MONO:     { label: 'MONO',     colors: ['#14181d'] },
+    PAPERW:   { label: 'PAPER',    colors: ['#f2f4f6'] }
+  };
+  const SCHEME_KEYS = Object.keys(SCHEMES);
 
   // scale = semitone offsets inside one octave
   const SCALES = {
@@ -45,11 +60,12 @@
 
   // mix a video-sampled colour toward the nearest palette hue so the plate
   // always reads as one printed system rather than raw video mush
-  function paletteSnap(r, gg, b, amount) {
+  function paletteSnap(r, gg, b, amount, ramp) {
     amount = amount === undefined ? 0.55 : amount;
-    let best = PALETTE[0], bestD = Infinity;
-    for (let i = 0; i < PALETTE.length; i++) {
-      const c = hexToRgb(PALETTE[i]);
+    ramp = ramp && ramp.length ? ramp : PALETTE;
+    let best = ramp[0], bestD = Infinity;
+    for (let i = 0; i < ramp.length; i++) {
+      const c = hexToRgb(ramp[i]);
       const d = (c.r - r) * (c.r - r) + (c.g - gg) * (c.g - gg) + (c.b - b) * (c.b - b);
       if (d < bestD) { bestD = d; best = PALETTE[i]; }
     }
@@ -67,6 +83,8 @@
   g.AM.PAPER = PAPER;
   g.AM.PAPER2 = PAPER2;
   g.AM.RISO = RISO;
+  g.AM.SCHEMES = SCHEMES;
+  g.AM.SCHEME_KEYS = SCHEME_KEYS;
   g.AM.INK = INK;
   g.AM.SCALES = SCALES;
   g.AM.SCALE_KEYS = SCALE_KEYS;

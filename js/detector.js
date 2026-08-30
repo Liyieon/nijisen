@@ -14,6 +14,7 @@
       orient: orient || 'h',      // 'h' = horizontal line, scans across x
       pos: pos === undefined ? 0.5 : pos,   // 0..1 across the other axis
       octave: 0,                  // transpose in octaves
+      color: null,                // null = follow the global scan-colour scheme
       prev: null,                 // Float32Array previous luma per cell
       prevAct: null,              // Float32Array previous activity per cell
       gate: null,                 // Uint8Array armed flags
@@ -32,17 +33,22 @@
     this.enabled = true;
   }
 
-  Detector.prototype.addLine = function (orient) {
-    if (this.lines.length >= 6) return null;
-    const l = makeLine(orient || 'h', 0.2 + Math.random() * 0.6);
+  Detector.prototype.addLine = function (orient, pos) {
+    if (this.lines.length >= 8) return null;
+    const l = makeLine(orient || 'h', pos === undefined ? 0.2 + Math.random() * 0.6 : pos);
     this.lines.push(l);
     return l;
   };
-  Detector.prototype.removeLine = function () {
-    if (this.lines.length <= 1) return false;
-    this.lines.pop();
-    return true;
+  /* remove one specific line (or the last one). The field may end up empty —
+     a single horizontal line is no longer forced, so "one vertical line only"
+     is a reachable state. */
+  Detector.prototype.removeLine = function (line) {
+    const i = line ? this.lines.indexOf(line) : this.lines.length - 1;
+    if (i < 0) return null;
+    this.lines.splice(i, 1);
+    return this.lines[Math.min(i, this.lines.length - 1)] || null;
   };
+  Detector.prototype.indexOf = function (line) { return this.lines.indexOf(line); };
   Detector.prototype.reset = function () {
     for (const l of this.lines) { l.prev = null; l.prevAct = null; l.gate = null; l.last = null; l.flash = null; }
   };

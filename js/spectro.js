@@ -29,17 +29,10 @@
     c.fillStyle = AM.PAPER2; c.fillRect(0, 0, W, H);
 
     // 和紙 horizontal grain, so an exported plate still reads as paper
-    c.strokeStyle = 'rgba(120,108,80,.075)'; c.lineWidth = 1;
+    c.strokeStyle = 'rgba(90,100,115,.075)'; c.lineWidth = 1;
     for (let y = 0; y < H; y += 5) { c.beginPath(); c.moveTo(0, y + .5); c.lineTo(W, y + .5); c.stroke(); }
-    c.strokeStyle = 'rgba(120,108,80,.10)';
+    c.strokeStyle = 'rgba(90,100,115,.10)';
     for (let y = 0; y < H; y += 41) { c.beginPath(); c.moveTo(0, y + .5); c.lineTo(W, y + .5); c.stroke(); }
-
-    // spirograph watermark
-    if (AM.rosette) {
-      AM.rosette(c, W * 0.5, H * 0.5, H * 0.44, {
-        petals: 37, r: H * 0.19, d: H * 0.12, alpha: .13, lineWidth: .5, color: '#7fa892'
-      });
-    }
 
     // scattered square field
     for (let i = 0; i < 140; i++) {
@@ -51,7 +44,7 @@
     c.globalAlpha = 1;
 
     // registration marks, like a print plate
-    c.strokeStyle = 'rgba(22,22,15,.22)'; c.lineWidth = 1;
+    c.strokeStyle = 'rgba(20,24,29,.22)'; c.lineWidth = 1;
     for (let i = 1; i < 8; i++) {
       const x = Math.round(W * i / 8) + .5;
       c.beginPath(); c.moveTo(x, 0); c.lineTo(x, 7); c.moveTo(x, H); c.lineTo(x, H - 7); c.stroke();
@@ -95,7 +88,7 @@
      ev : {nx, ny, vel, r,g,b, cell, cells, noteName} */
   Spectro.prototype.stamp = function (ev, spec) {
     const c = this.ctx, W = this.W, H = this.H;
-    const snapped = AM.paletteSnap(ev.r, ev.g, ev.b, 0.62);
+    const snapped = AM.paletteSnap(ev.r, ev.g, ev.b, 0.62, ev.ramp);
     const col = AM.rgbToCss(snapped.r, snapped.g, snapped.b, 1);
 
     if (this.mode === 'ring') return this._stampRing(ev, spec, col);
@@ -125,7 +118,7 @@
     c.fillStyle = col;
     c.fillRect(x - (w >> 1) - 1, py - 2, w + 2, 5);
     // ink tick, keeps the plate graphic
-    c.fillStyle = 'rgba(20,20,20,.55)';
+    c.fillStyle = 'rgba(20,24,29,.55)';
     c.fillRect(x - (w >> 1) - 1, py + 4, w + 2, 1);
     c.globalCompositeOperation = 'source-over';
     c.globalAlpha = 1;

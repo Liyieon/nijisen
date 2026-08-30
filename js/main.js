@@ -19,7 +19,11 @@
     lineTool: null,
     selected: null,
     layout: 'landscape',
-    layoutAuto: true
+    layoutAuto: true,
+    scheme: 'SPECTRUM',       // scan-line colour scheme
+    custom: '#3f8296',        // custom scan colour
+    colorTarget: 'all',       // 'all' | 'sel'
+    stageOnly: false
   };
 
   const engine = new AM.AudioEngine();
@@ -106,12 +110,14 @@
     video.play().then(function () {
       S.playing = true;
       $('#btnPlay').textContent = 'PAUSE';
+      $('#sbPlay').textContent = 'PAUSE';
       $('#statusText').textContent = 'RUNNING'; $('#statusText').classList.add('live');
     }).catch(function (err) { toast('play blocked: ' + err.message); });
   }
   function pause() {
     video.pause(); S.playing = false;
     $('#btnPlay').textContent = 'PLAY';
+    $('#sbPlay').textContent = 'PLAY';
     $('#statusText').textContent = 'HELD'; $('#statusText').classList.remove('live');
   }
   $('#btnPlay').addEventListener('click', function () { S.playing ? pause() : play(); });
@@ -176,6 +182,71 @@
     if (!isFinite(t)) t = 0;
     const m = Math.floor(t / 60), s = Math.floor(t % 60);
     return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  /* ---------------- stage-only mode ----------------
+     video + scan lines only. Lines stay draggable; everything else goes. */
+  function setStageOnly(on, fromFsEvent) {
+    S.stageOnly = !!on;
+    document.body.classList.toggle('stage-only', S.stageOnly);
+    $('#btnStage').dataset.on = S.stageOnly ? 'true' : 'false';
+
+    if (!fromFsEvent) {
+      try {
+        if (S.stageOnly && !document.fullscreenElement) {
+          const p = document.documentElement.requestFullscreen();
+          if (p && p.catch) p.catch(function () { });
+        } else if (!S.stageOnly && document.fullscreenElement) {
+          const p = document.exitFullscreen();
+          if (p && p.catch) p.catch(function () { });
+        }
+      } catch (e) { }
+    }
+    // the viewport changes size in both directions here
+    requestAnimationFrame(function () { sizeCanvases(); computeRect(); resizePlate(); });
+    setTimeout(function () { sizeCanvases(); computeRect(); resizePlate(); }, 120);
+    if (S.stageOnly) toast('STAGE — 只留影片與掃描線，F 或 ESC 離開');
+  }
+  document.addEventListener('fullscreenchange', function () {
+    if (!document.fullscreenElement && S.stageOnly) setStageOnly(false, true);
+  });
+
+  function buildStageBar() {
+    $('#sbExit').addEventListener('click', function () { setStageOnly(false); });
+    $('#sbPlay').addEventListener('click', function () { S.playing ? pause() : play(); });
+    $('#sbAddH').addEventListener('click', function () { addLine('h'); });
+    $('#sbAddV').addEventListener('click', function () { addLine('v'); });
+    $('#sbDel').addEventListener('click', function () { deleteSelected(); });
+    $('#sbPrev').addEventListener('click', function () { cycleSelect(-1); });
+    $('#sbNext').addEventListener('click', function () { cycleSelect(1); });
+    $('#btnStage').addEventListener('click', function () { setStageOnly(!S.stageOnly); });
+  }
+
+  /* ---------------- scan colour ---------------- */
+  function ramp() {
+    const sc = AM.SCHEMES[S.scheme];
+    return (sc && sc.colors.length) ? sc.colors : AM.PALETTE;
+  }
+  /* colour of one cell of one line: a per-line override wins over the scheme */
+  function lineColor(line, cell) {
+    if (line && line.color) return line.color;
+    const r = ramp();
+    return r[cell % r.length];
+  }
+  function applyColor(hex) {
+    if (S.colorTarget === 'sel' && S.selected) {
+      S.selected.color = hex;
+      toast('L' + S.selected.id + ' 線色 ' + hex);
+    } else {
+      for (const l of det.lines) l.color = hex;
+      S.custom = hex;
+      toast('全部線色 ' + hex);
+    }
+    paintColorUI();
+  }
+  function clearOverrides() {
+    for (const l of det.lines) l.color = null;
+    paintColorUI();
   }
 
   /* ---------------- layout ---------------- */
@@ -373,11 +444,96 @@
     paintLayoutSeg();
   });
   bindSeg('#segSpecMode', function (v) { spectro.setMode(v); });
+  function select(line) {
+    S.selected = line || null;
+    paintLineUI();
+  }
+  function cycleSelect(dir) {
+    if (!det.lines.length) return select(null);
+    const i = det.lines.indexOf(S.selected);
+    const n = det.lines.length;
+    select(det.lines[((i < 0 ? 0 : i + dir) + n) % n]);
+  }
+  function addLine(orient) {
+    const l = det.addLine(orient);
+    if (!l) { toast('已達上限 8 條線'); return; }
+    select(l);
+    toast((orient === 'v' ? '直線' : '橫線') + ' L' + l.id + ' — ' + det.lines.length + ' 條');
+  }
+  function deleteSelected() {
+    if (!det.lines.length) { toast('沒有線可刪'); return; }
+    const target = S.selected || det.lines[det.lines.length - 1];
+    const next = det.removeLine(target);
+    select(next);
+    toast(det.lines.length ? ('刪除 L' + target.id + ' — 剩 ' + det.lines.length + ' 條')
+      : '線段已全部清空');
+  }
+  function paintLineUI() {
+    const has = det.lines.length > 0;
+    const i = det.lines.indexOf(S.selected);
+    const txt = has
+      ? (i >= 0 ? 'L' + S.selected.id + ' ' + (S.selected.orient === 'h' ? 'H' : 'V') +
+          ' ' + (i + 1) + '/' + det.lines.length
+        : '-- ' + det.lines.length + ' 條')
+      : 'EMPTY';
+    const a = $('#selRead'), b = $('#sbRead');
+    if (a) a.textContent = txt;
+    if (b) b.textContent = txt;
+    paintColorUI();
+  }
   bindSeg('#segLines', function (v) {
-    if (v === 'add') { det.addLine('h'); toast('line added — ' + det.lines.length + ' lines'); }
-    else if (v === 'del') { det.removeLine(); toast(det.lines.length + ' lines'); }
-    else { det.addLine('v'); toast('vertical line added'); }
+    if (v === 'add') addLine('h');
+    else if (v === 'vert') addLine('v');
+    else deleteSelected();
   });
+  $('#selPrev').addEventListener('click', function () { cycleSelect(-1); });
+  $('#selNext').addEventListener('click', function () { cycleSelect(1); });
+
+  /* ---------------- scan colour UI ---------------- */
+  function buildColorUI() {
+    const box = $('#schemeSwatches');
+    AM.SCHEME_KEYS.forEach(function (k) {
+      const sc = AM.SCHEMES[k];
+      const b = document.createElement('button');
+      b.className = 'sw'; b.dataset.k = k; b.title = 'scheme: ' + sc.label;
+      const strip = document.createElement('span');
+      strip.className = 'sw-strip';
+      strip.style.background = sc.colors.length > 1
+        ? 'linear-gradient(90deg,' + sc.colors.join(',') + ')'
+        : sc.colors[0];
+      const cap = document.createElement('span');
+      cap.className = 'sw-cap'; cap.textContent = sc.label;
+      b.appendChild(strip); b.appendChild(cap);
+      b.addEventListener('click', function () {
+        S.scheme = k;
+        if (S.colorTarget === 'sel' && S.selected) S.selected.color = null;
+        else clearOverrides();
+        paintColorUI();
+        toast('scan colour: ' + sc.label);
+      });
+      box.appendChild(b);
+    });
+    $('#colCustom').addEventListener('input', function () { applyColor(this.value); });
+    bindSeg('#segColTarget', function (v) { S.colorTarget = v; paintColorUI(); });
+    $('#btnColReset').addEventListener('click', function () {
+      clearOverrides(); toast('線色回到 ' + AM.SCHEMES[S.scheme].label);
+    });
+    paintColorUI();
+  }
+  function paintColorUI() {
+    document.querySelectorAll('#schemeSwatches .sw').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.k === S.scheme);
+    });
+    const chip = $('#colChip');
+    if (chip) {
+      const shown = (S.colorTarget === 'sel' && S.selected && S.selected.color) || S.custom;
+      chip.style.setProperty('--chip', shown);
+      const inp = $('#colCustom');
+      if (inp && inp.value.toLowerCase() !== shown.toLowerCase()) inp.value = shown;
+    }
+    const t = $('#segColTarget');
+    if (t) t.classList.toggle('dim', S.colorTarget === 'sel' && !S.selected);
+  }
 
   /* ---------------- top buttons ---------------- */
   /* AudioContext can only start from a user gesture — call this from every
@@ -483,8 +639,9 @@
     if (!video.src) return;
     const n = toNorm(e);
     const l = det.pick(n.x, n.y, 0.035);
+    select(l);
     if (l) {
-      drag = l; S.selected = l;
+      drag = l;
       try { vp.setPointerCapture(e.pointerId); } catch (err) { }
       e.preventDefault();
     }
@@ -507,6 +664,9 @@
     if (e.code === 'Digit1') { S.voice = 'BELL'; engine.setVoice('BELL'); paintRails(); }
     if (e.code === 'Digit2') { S.voice = 'PLUCK'; engine.setVoice('PLUCK'); paintRails(); }
     if (e.code === 'Digit3') { S.voice = 'GLITCH'; engine.setVoice('GLITCH'); paintRails(); }
+    if (e.code === 'Delete' || e.code === 'Backspace') { e.preventDefault(); deleteSelected(); return; }
+    if (e.code === 'Tab') { e.preventDefault(); cycleSelect(e.shiftKey ? -1 : 1); return; }
+    if (e.code === 'KeyF') { e.preventDefault(); setStageOnly(!S.stageOnly); return; }
     const l = S.selected || det.lines[0];
     if (l && (e.code === 'ArrowUp' || e.code === 'ArrowDown')) {
       e.preventDefault();
@@ -552,6 +712,7 @@
       r: ev.r, g: ev.g, b: ev.b,
       pitchNorm: AM.clamp((midi - S.root) / 36, 0, 1)
     };
+    stampEv.ramp = ev.line.color ? [ev.line.color] : ramp();
     spectro.stamp(stampEv, engine.ready ? engine.getSpectrum() : null);
 
     if (ok) {
@@ -637,23 +798,26 @@
       const py = horiz ? R.y + line.pos * R.h : R.y;
       const len = horiz ? R.w : R.h;
       const sel = (line === S.selected);
+      const lineHue = line.color || lineColor(line, 0);
 
-      // the line itself
-      c.strokeStyle = 'rgba(255,255,255,.85)';
+      // the line itself — tinted by the scan colour, dark backing for contrast
+      c.strokeStyle = sel ? lineHue : 'rgba(255,255,255,.85)';
+      c.lineWidth = (sel ? 2 : 1) * Math.max(1, dpr);
       c.setLineDash([]);
       c.beginPath();
       if (horiz) { c.moveTo(R.x, py); c.lineTo(R.x + R.w, py); }
       else { c.moveTo(px, R.y); c.lineTo(px, R.y + R.h); }
       c.stroke();
+      c.lineWidth = Math.max(1, dpr);
       c.strokeStyle = 'rgba(0,0,0,.55)';
       c.beginPath();
-      if (horiz) { c.moveTo(R.x, py + dpr); c.lineTo(R.x + R.w, py + dpr); }
-      else { c.moveTo(px + dpr, R.y); c.lineTo(px + dpr, R.y + R.h); }
+      if (horiz) { c.moveTo(R.x, py + 1.6 * dpr); c.lineTo(R.x + R.w, py + 1.6 * dpr); }
+      else { c.moveTo(px + 1.6 * dpr, R.y); c.lineTo(px + 1.6 * dpr, R.y + R.h); }
       c.stroke();
 
       // sampled band
       const bandPx = det.band / (horiz ? ah : aw) * (horiz ? R.h : R.w);
-      c.fillStyle = 'rgba(255,255,255,.10)';
+      c.fillStyle = sel ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.10)';
       if (horiz) c.fillRect(R.x, py - bandPx, R.w, bandPx * 2 + 1);
       else c.fillRect(px - bandPx, R.y, bandPx * 2 + 1, R.h);
 
@@ -664,7 +828,7 @@
           const a0 = i * cw;
           const act = AM.clamp(line.prevAct[i] || 0, 0, 1.4);
           const fl = line.flash ? line.flash[i] : 0;
-          const col = P[i % P.length];
+          const col = lineColor(line, i);
           const bar = act * 26 * dpr;
 
           if (horiz) {
@@ -696,7 +860,7 @@
       }
 
       // handle + label
-      c.fillStyle = sel ? '#dfae35' : '#efe9dc';
+      c.fillStyle = sel ? lineHue : '#e8e9ea';
       if (horiz) c.fillRect(R.x - 4 * dpr, py - 4 * dpr, 8 * dpr, 8 * dpr);
       else c.fillRect(px - 4 * dpr, R.y - 4 * dpr, 8 * dpr, 8 * dpr);
       c.fillStyle = 'rgba(239,233,220,.9)';
@@ -746,7 +910,10 @@
     ['FILE', function () { return S.fileName; }],
     ['HIT', function () { return ('0000' + engine.hits()).slice(-4); }],
     ['VOX', function () { return ('00' + engine.active).slice(-2); }],
-    ['LIN', function () { return '[' + det.lines.length + ']'; }],
+    ['LIN', function () {
+      const i = det.lines.indexOf(S.selected);
+      return '[' + det.lines.length + ']' + (i >= 0 ? ' SEL L' + S.selected.id : '');
+    }],
     ['DET', function () { return det.mode.toUpperCase() + ' ' + det.sens.toFixed(2); }],
     ['SCL', function () { return S.scale + ' ' + AM.midiToName(S.root); }],
     ['CLK', function () { return ('000' + Math.round(S.bpm)).slice(-3) + ' ' + AM.QUANT[S.quantIdx].label; }],
@@ -804,6 +971,9 @@
     buildRails();
     buildKnobs();
     buildStepper();
+    buildColorUI();
+    buildStageBar();
+    paintLineUI();
     drawOrnaments();
     updateFoot();
     requestAnimationFrame(loop);
@@ -813,9 +983,28 @@
   function drawOrnaments() {
     const dz = $('#dzMark');
     if (dz) {
-      const c = dz.getContext('2d');
-      AM.rosette(c, 74, 74, 66, { petals: 41, r: 27, d: 19, alpha: .55, lineWidth: .45, color: '#7fa892' });
-      AM.rosette(c, 74, 74, 40, { petals: 23, r: 15, d: 11, alpha: .40, lineWidth: .45, color: '#5a564a' });
+      // survey target: crosshair, graduated ring, corner brackets
+      const c = dz.getContext('2d'), M = 74;
+      c.clearRect(0, 0, 148, 148);
+      c.strokeStyle = 'rgba(20,24,29,.5)'; c.lineWidth = 1;
+      c.beginPath(); c.arc(M, M, 48, 0, 6.2832); c.stroke();
+      c.strokeStyle = 'rgba(20,24,29,.28)';
+      c.beginPath(); c.arc(M, M, 62, 0, 6.2832); c.stroke();
+      for (let i = 0; i < 48; i++) {
+        const a = i * Math.PI / 24, big = i % 4 === 0;
+        c.strokeStyle = big ? 'rgba(20,24,29,.55)' : 'rgba(20,24,29,.25)';
+        c.beginPath();
+        c.moveTo(M + Math.cos(a) * 62, M + Math.sin(a) * 62);
+        c.lineTo(M + Math.cos(a) * (62 - (big ? 9 : 5)), M + Math.sin(a) * (62 - (big ? 9 : 5)));
+        c.stroke();
+      }
+      c.strokeStyle = 'rgba(63,111,168,.85)'; c.lineWidth = 1;
+      c.beginPath(); c.moveTo(M - 30, M); c.lineTo(M - 8, M);
+      c.moveTo(M + 8, M); c.lineTo(M + 30, M);
+      c.moveTo(M, M - 30); c.lineTo(M, M - 8);
+      c.moveTo(M, M + 8); c.lineTo(M, M + 30); c.stroke();
+      c.fillStyle = 'rgba(63,111,168,.9)';
+      c.fillRect(M - 2, M - 2, 4, 4);
     }
     const sc = $('#scatterL');
     if (sc) {

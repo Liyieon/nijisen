@@ -1,7 +1,7 @@
 /* ============================================================
    虹線 - NIJISEN
    type     : JetBrains Mono
-   surface  : flat washi #FCFAF2, no ruling — the marks carry the texture
+   surface  : cool paper #F0F0F0 with a horizontal laid grain (cyanotype-ish)
    controls : knurled knobs, tick collars, LED command cells — no sliders
    marks    : riso-blue tally bars, scattered squares, bracket data type
    layout   : LAND (wide video) / PORT (tall video, console at the side)
@@ -25,27 +25,27 @@
 }
 
 :root{
-  --washi:#FCFAF2;
-  --washi-2:#f5f2e7;
-  --washi-3:#ece8da;
-  --ink:#16160f;
-  --ink-soft:#5a564a;
-  --rule:#16160f;
-  --hair:rgba(22,22,15,.24);
-  --hair-2:rgba(22,22,15,.12);
+  --washi:#F0F0F0;
+  --washi-2:#e8e9ea;
+  --washi-3:#dcdee1;
+  --ink:#14181d;
+  --ink-soft:#525c66;
+  --rule:#14181d;
+  --hair:rgba(20,24,29,.24);
+  --hair-2:rgba(20,24,29,.12);
 
-  --riso:#5b8fc9;
-  --red:#c4453b;
-  --orange:#d97b2b;
-  --amber:#dfae35;
-  --green:#4f7f4f;
-  --sage:#7fa892;
-  --teal:#3c8b94;
-  --blue:#3f6fa8;
+  --riso:#3f6fa8;
+  --red:#a8564f;
+  --orange:#a86a45;
+  --amber:#9a8347;
+  --green:#3c6e5c;
+  --sage:#5f8a86;
+  --teal:#3f8296;
+  --blue:#2f5d8a;
   --indigo:#4a4f8f;
-  --purple:#6b4c8f;
-  --pink:#bd7f92;
-  --brown:#7d5a3c;
+  --purple:#6b5c8f;
+  --pink:#8a5f77;
+  --brown:#5e6b78;
 
   --led:var(--ink);
   --mono:"JetBrains Mono","Noto Sans Mono CJK TC","Microsoft JhengHei",Menlo,Consolas,monospace;
@@ -60,11 +60,11 @@ body{
   background-color:var(--washi);
   background-image:
     repeating-linear-gradient(0deg,
-      rgba(120,108,80,.045) 0 1px, rgba(0,0,0,0) 1px 5px),
+      rgba(70,88,110,.045) 0 1px, rgba(0,0,0,0) 1px 5px),
     repeating-linear-gradient(0deg,
-      rgba(120,108,80,.030) 0 1px, rgba(0,0,0,0) 1px 13px),
+      rgba(70,88,110,.030) 0 1px, rgba(0,0,0,0) 1px 13px),
     repeating-linear-gradient(0deg,
-      rgba(120,108,80,.055) 0 1px, rgba(0,0,0,0) 1px 41px);
+      rgba(70,88,110,.055) 0 1px, rgba(0,0,0,0) 1px 41px);
   color:var(--ink);
   font-family:var(--mono);
   font-size:12px;
@@ -85,7 +85,7 @@ body::before{
 
 .panel{
   border:1px solid var(--rule);
-  background:rgba(255,254,249,.6);
+  background:rgba(248,249,250,.62);
   clip-path:polygon(0 0, calc(100% - var(--notch)) 0, 100% var(--notch),
                     100% 100%, var(--notch) 100%, 0 calc(100% - var(--notch)));
 }
@@ -229,9 +229,9 @@ body::before{
 .cir:hover{background:var(--washi-3)}
 .cir.on{background:var(--ink);color:var(--washi);border-color:var(--ink)}
 .cir.on .collar .c-ring{opacity:1}
-.cir.on .collar .tk{stroke:rgba(252,250,242,.4)}
+.cir.on .collar .tk{stroke:rgba(240,240,240,.4)}
 .cir.on .spiro{opacity:.32;filter:invert(1)}
-.cir.on .tag{color:rgba(252,250,242,.6)}
+.cir.on .tag{color:rgba(240,240,240,.6)}
 .cir.pulse{animation:pulse .28s ease-out}
 @keyframes pulse{0%{transform:scale(1)}40%{transform:scale(1.2)}100%{transform:scale(1)}}
 
@@ -328,6 +328,44 @@ body::before{
 
 #tally{width:100%;height:52px;display:block}
 
+/* ---------------- line picker + scan colour ---------------- */
+.linepick{display:flex;align-items:stretch;border:1px solid var(--hair);height:22px}
+.linepick .lp-arrow{
+  font-family:var(--mono);font-size:8px;border:0;background:transparent;color:var(--ink);
+  cursor:pointer;padding:0 7px;
+}
+.linepick .lp-arrow:hover{background:var(--ink);color:var(--washi)}
+.linepick .lp-read{
+  flex:1;display:flex;align-items:center;justify-content:center;min-width:74px;
+  font-size:9px;font-weight:700;letter-spacing:.09em;
+  border-left:1px solid var(--hair);border-right:1px solid var(--hair);
+}
+
+.swatches{display:flex;flex-wrap:wrap;gap:4px;max-width:214px}
+.sw{
+  border:1px solid var(--hair);background:transparent;cursor:pointer;
+  padding:2px 2px 1px;display:flex;flex-direction:column;gap:2px;align-items:stretch;
+  min-width:48px;transition:.09s;
+}
+.sw-strip{display:block;height:7px}
+.sw-cap{
+  font-family:var(--mono);font-size:6.5px;font-weight:700;letter-spacing:.1em;
+  color:var(--ink-soft);text-align:center;
+}
+.sw:hover{border-color:var(--rule)}
+.sw.on{border-color:var(--rule);background:var(--ink)}
+.sw.on .sw-cap{color:var(--washi)}
+
+.colrow{display:flex;align-items:center;gap:6px}
+.colchip{
+  --chip:#3f8296;
+  position:relative;width:26px;height:22px;border:1px solid var(--rule);
+  background:var(--chip);cursor:pointer;flex:0 0 auto;
+  clip-path:polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px));
+}
+.colchip input{position:absolute;inset:0;opacity:0;cursor:pointer;border:0;padding:0}
+.seg.dim{opacity:.45}
+
 /* ---------------- spectrum plate ---------------- */
 .spectro-wrap{padding:14px 0 16px;display:flex;flex-direction:column;gap:8px}
 .sp-head{display:flex;align-items:center;justify-content:space-between;gap:14px}
@@ -356,6 +394,41 @@ body[data-layout="portrait"] .knobbank{flex-wrap:wrap;justify-content:flex-start
 body[data-layout="portrait"] .spectro-wrap{flex:1;min-height:0;padding:0}
 body[data-layout="portrait"] #specCanvas{flex:1;min-height:120px;height:auto}
 body[data-layout="portrait"] .pmod.grow{flex:0 0 auto}
+
+/* ============================================================
+   STAGE-ONLY — video plus scan lines, nothing else
+   ============================================================ */
+.stagebar{
+  position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
+  display:none;align-items:center;gap:6px;
+  padding:7px 10px;background:rgba(20,24,29,.86);border:1px solid rgba(240,240,240,.22);
+  z-index:1001;backdrop-filter:blur(3px);
+  clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  opacity:.28;transition:opacity .15s;
+}
+.stagebar:hover{opacity:1}
+.stagebar .sb-sep{width:1px;align-self:stretch;background:rgba(240,240,240,.25);margin:0 3px}
+.stagebar .sb-read{
+  font-size:9px;font-weight:700;letter-spacing:.09em;color:#f0f0f0;min-width:76px;text-align:center;
+}
+.stagebar .sq-btn{color:#f0f0f0;border-color:rgba(240,240,240,.4)}
+.stagebar .sq-btn:hover{background:#f0f0f0;color:var(--ink)}
+
+body.stage-only{background:#0c0e11;overflow:hidden}
+body.stage-only::before{opacity:.05}
+body.stage-only .topbar,
+body.stage-only .rail,
+body.stage-only .transport,
+body.stage-only .console,
+body.stage-only .statusbar{display:none}
+body.stage-only .stage{display:block;height:100%}
+body.stage-only .center{padding:0;height:100%;display:block;gap:0}
+body.stage-only .viewport{
+  height:100%;width:100%;border:0;clip-path:none;background:#0c0e11;
+}
+body.stage-only .vp-corner{opacity:.35}
+body.stage-only .stagebar{display:flex}
+body.stage-only .toast{bottom:74px}
 
 /* ---------------- footer ---------------- */
 .statusbar{
@@ -484,6 +557,14 @@ body[data-layout="portrait"] .pmod.grow{flex:0 0 auto}
   .jp-label{display:none}
   .scatter{display:none}
 
+  .swatches{max-width:none}
+  .sw{flex:1 1 60px}
+  .linepick{height:26px}
+  .linepick .lp-read{font-size:10px}
+  .colchip{width:34px;height:26px}
+  .stagebar{bottom:10px;gap:4px;padding:6px 8px;flex-wrap:wrap;max-width:94vw;justify-content:center;opacity:1}
+  .stagebar .sb-read{min-width:64px}
+  body.stage-only .viewport{height:100vh}
   .statusbar{gap:10px 14px;padding:8px 12px;font-size:9px}
   .toast{bottom:16px;font-size:9.5px;max-width:88vw}
 
