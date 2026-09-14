@@ -520,6 +520,43 @@ body.stage-only .stagebar{display:flex;bottom:calc(25vh + 14px)}
 body.stage-only.stage-noplate .stagebar{bottom:18px}
 body.stage-only .toast{bottom:calc(25vh + 62px)}
 
+/* ============================================================
+   I/O DRAWER — record · MIDI · state
+   ============================================================ */
+.drawer{
+  position:fixed;top:64px;right:16px;z-index:1002;
+  width:340px;max-height:calc(100vh - 84px);overflow-y:auto;
+  padding:14px 16px 16px;display:flex;flex-direction:column;gap:14px;
+  background:var(--washi);
+  box-shadow:0 18px 40px -18px rgba(20,24,29,.45);
+}
+.drawer[hidden]{display:none}
+.dr-head{display:flex;align-items:center;justify-content:space-between}
+.dr-title{font-size:10px;font-weight:700;letter-spacing:.2em}
+.dr-sec{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--hair-2)}
+.dr-row{display:flex;align-items:center;gap:8px}
+.dr-row.wrap{flex-wrap:wrap}
+.dr-read{
+  font-size:10px;font-weight:700;letter-spacing:.1em;font-variant-numeric:tabular-nums;
+  color:var(--ink-soft);
+}
+.dr-lab{font-size:7.5px;letter-spacing:.2em;color:var(--ink-soft);min-width:58px}
+.dr-note{font-size:9px;line-height:1.55;color:var(--ink-soft);letter-spacing:.02em}
+.linepick.grow{flex:1}
+body.stage-only .drawer{display:none}
+body[data-theme="dark"] .drawer{box-shadow:0 18px 40px -18px rgba(0,0,0,.8)}
+
+/* a recording in progress is impossible to miss */
+body.is-recording #btnRec,
+body.is-recording #sbRec,
+body.is-recording #ioRec{background:var(--red);border-color:var(--red);color:#fff}
+body.is-recording #btnRec::before,
+body.is-recording #sbRec::before,
+body.is-recording #ioRec::before{background:#fff;border-color:#fff;animation:recblink 1s steps(2) infinite}
+body.is-recording .hud-read{border-color:var(--red);color:var(--red)}
+body.is-recording .hud-read::before{background:var(--red)}
+@keyframes recblink{50%{opacity:.15}}
+
 /* ---------------- footer ---------------- */
 .statusbar{
   border-top:1px solid var(--rule);padding:8px 20px;font-size:10px;letter-spacing:.08em;
@@ -663,6 +700,8 @@ body.stage-only .toast{bottom:calc(25vh + 62px)}
   body.stage-only .spectro-wrap{padding:6px 10px 10px}
   body.stage-only .stagebar{bottom:calc(34vh + 10px)}
   body.stage-only.stage-noplate .stagebar{bottom:10px}
+  .drawer{top:auto;bottom:0;left:0;right:0;width:auto;max-height:78vh;padding:14px 14px 22px}
+  .dr-row{flex-wrap:wrap}
   .statusbar{gap:10px 14px;padding:8px 12px;font-size:9px}
   .toast{bottom:16px;font-size:9.5px;max-width:88vw}
 

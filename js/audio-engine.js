@@ -96,6 +96,17 @@
     this.nodes.analyser.getByteFrequencyData(this.freqData);
     return this.freqData;
   };
+  /* a MediaStream of the master output (post compressor), for recording.
+     Created once and kept connected; costs nothing while nobody reads it. */
+  AudioEngine.prototype.streamTap = function () {
+    if (!this.ready) this.init();
+    if (!this.tap) {
+      this.tap = this.ctx.createMediaStreamDestination();
+      this.nodes.analyser.connect(this.tap);
+    }
+    return this.tap.stream;
+  };
+
   AudioEngine.prototype.getWave = function () {
     if (!this.ready) return null;
     this.nodes.analyser.getByteTimeDomainData(this.timeData);

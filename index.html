@@ -18,6 +18,8 @@
     <button class="sq-btn led-riso"  id="btnSrcAudio" data-on="false" data-idx="05">SRC</button>
     <button class="sq-btn led-riso"  id="btnTest"     data-idx="06">TEST</button>
     <button class="sq-btn led-riso"  id="btnStage"    data-idx="10">STAGE</button>
+    <button class="sq-btn led-red"   id="btnRec"      data-on="false" data-idx="11">REC</button>
+    <button class="sq-btn led-riso"  id="btnIO"       data-on="false" data-idx="12">I/O</button>
 
     <div class="stepper" id="presetStep">
       <button class="st-arrow" data-d="-1">&#9664;</button>
@@ -203,6 +205,89 @@
   <input type="range" id="pVol"   min="0"    max="1"   step="0.01" value="0.8">
 </div>
 
+<!-- I/O drawer: recording, MIDI, state. Settings you set up before playing. -->
+<aside class="drawer panel" id="ioDrawer" hidden>
+  <div class="dr-head">
+    <span class="dr-title">[ I/O ]</span>
+    <button class="sq-btn tiny led-red" id="ioClose">CLOSE</button>
+  </div>
+
+  <section class="dr-sec">
+    <div class="pmod-hd">[ RECORD ]</div>
+    <div class="dr-row">
+      <div class="seg small" id="segRecKind">
+        <button data-v="audio" class="on">AUDIO &rarr; WAV</button>
+        <button data-v="video">VIDEO</button>
+      </div>
+    </div>
+    <div class="dr-row">
+      <div class="seg small" id="segRecPlate">
+        <button data-v="on" class="on">+ PLATE</button>
+        <button data-v="off">VIDEO ONLY</button>
+      </div>
+    </div>
+    <div class="dr-row">
+      <button class="sq-btn led-red" id="ioRec" data-on="false">REC</button>
+      <span class="dr-read" id="recRead">00:00</span>
+    </div>
+    <p class="dr-note" id="recNote">錄音存成 WAV；影片會把畫面、掃描線與圖版合成一支檔案（瀏覽器支援 mp4 時存 mp4，否則 webm）。快捷鍵 R。</p>
+  </section>
+
+  <section class="dr-sec">
+    <div class="pmod-hd">[ MIDI OUT ]</div>
+    <div class="dr-row">
+      <button class="sq-btn led-green" id="midiOn" data-on="false">MIDI</button>
+      <span class="dr-read" id="midiStatus">OFF</span>
+    </div>
+    <div class="dr-row">
+      <div class="linepick grow">
+        <button class="lp-arrow" id="midiOutPrev">&#9664;</button>
+        <span class="lp-read" id="midiOutRead">no output</span>
+        <button class="lp-arrow" id="midiOutNext">&#9654;</button>
+      </div>
+    </div>
+    <div class="dr-row">
+      <div class="linepick">
+        <button class="lp-arrow" id="midiChPrev">&#9664;</button>
+        <span class="lp-read" id="midiChRead">CH 1</span>
+        <button class="lp-arrow" id="midiChNext">&#9654;</button>
+      </div>
+      <div class="seg small" id="segMidiRoute">
+        <button data-v="all" class="on">1 CH</button>
+        <button data-v="line">CH / LINE</button>
+      </div>
+    </div>
+    <div class="dr-row">
+      <span class="dr-lab">GATE</span>
+      <div class="seg small" id="segMidiGate">
+        <button data-v="60">60ms</button>
+        <button data-v="140" class="on">140ms</button>
+        <button data-v="400">400ms</button>
+      </div>
+      <button class="sq-btn tiny led-red" id="midiPanic">PANIC</button>
+    </div>
+    <p class="dr-note" id="midiNote">觸發同時送出 note on/off，與內建音色同一個量化時間點。CH / LINE：第 N 條線走第 N 個頻道，方便在 DAW 分軌。</p>
+  </section>
+
+  <section class="dr-sec">
+    <div class="pmod-hd">[ STATE ]</div>
+    <div class="dr-row wrap">
+      <button class="sq-btn led-riso" id="stLink">COPY LINK</button>
+      <button class="sq-btn led-green" id="stSave">SAVE</button>
+      <button class="sq-btn led-amber" id="stLoad">LOAD</button>
+    </div>
+    <div class="dr-row">
+      <span class="dr-lab">AUTOSAVE</span>
+      <div class="seg small" id="segAutosave">
+        <button data-v="on" class="on">ON</button>
+        <button data-v="off">OFF</button>
+      </div>
+    </div>
+    <input type="file" id="stFile" accept="application/json,.json" hidden>
+    <p class="dr-note">連結會帶上全部設定：參數、音階、音色、效果、線段位置與顏色、配色、主題、版面。影片檔本身不會包含在內。</p>
+  </section>
+</aside>
+
 <!-- stage-only mode: the only chrome left on screen -->
 <div class="stagebar" id="stageBar">
   <button class="sq-btn tiny led-red" id="sbExit">EXIT</button>
@@ -213,6 +298,8 @@
   <button class="sq-btn tiny led-red" id="sbDel">DEL</button>
   <span class="sb-sep"></span>
   <button class="sq-btn tiny led-green" id="sbPlate" data-on="true">PLATE</button>
+  <button class="sq-btn tiny led-riso" id="sbLines" data-on="true">LINES</button>
+  <button class="sq-btn tiny led-red" id="sbRec" data-on="false">REC</button>
   <span class="sb-sep"></span>
   <button class="sq-btn tiny" id="sbPrev">&#9664;</button>
   <span class="sb-read" id="sbRead">--</span>
@@ -226,6 +313,9 @@
 <script src="js/audio-engine.js"></script>
 <script src="js/detector.js"></script>
 <script src="js/spectro.js"></script>
+<script src="js/recorder.js"></script>
+<script src="js/midi.js"></script>
+<script src="js/state.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

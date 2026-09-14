@@ -25,12 +25,18 @@
     colorTarget: 'all',       // 'all' | 'sel'
     stageOnly: false,
     stagePlate: true,         // show the plate inside STAGE
+    stageLines: true,         // draw the scan lines over the video inside STAGE
+    recKind: 'audio',         // 'audio' | 'video'
+    recPlate: true,           // composite the plate into video recordings
+    autosave: true,
     theme: 'light'
   };
 
   const engine = new AM.AudioEngine();
   const det = new AM.Detector();
+  const midi = new AM.Midi();
   let spectro = null;
+  let recorder = null;
 
   /* ---------------- video + canvases ---------------- */
   const video = document.createElement('video');
@@ -221,7 +227,7 @@
     // the viewport changes size in both directions here
     requestAnimationFrame(function () { sizeCanvases(); computeRect(); resizePlate(); });
     setTimeout(function () { sizeCanvases(); computeRect(); resizePlate(); }, 120);
-    if (S.stageOnly) toast('STAGE — 只留影片與掃描線，F 或 ESC 離開');
+    if (S.stageOnly) { closeDrawer(); toast('STAGE — F 或 ESC 離開 · L 開關偵測線'); }
   }
   document.addEventListener('fullscreenchange', function () {
     if (!document.fullscreenElement && S.stageOnly) setStageOnly(false, true);
@@ -673,7 +679,7 @@
     return { x: (cx - vrect.x) / Math.max(1, vrect.w), y: (cy - vrect.y) / Math.max(1, vrect.h) };
   }
   vp.addEventListener('pointerdown', function (e) {
-    if (!video.src) return;
+    if (!video.src || !linesShown()) return;   // hidden lines cannot be grabbed
     const n = toNorm(e);
     const l = det.pick(n.x, n.y, 0.035);
     select(l);
@@ -689,7 +695,7 @@
       drag.pos = AM.clamp(drag.orient === 'h' ? n.y : n.x, 0.01, 0.99);
       det.reset();
     } else if (video.src) {
-      vp.style.cursor = det.pick(n.x, n.y, 0.035) ? 'grab' : 'default';
+      vp.style.cursor = linesShown() && det.pick(n.x, n.y, 0.035) ? 'grab' : 'default';
     }
   });
   vp.addEventListener('pointerup', function () { drag = null; });
@@ -704,6 +710,8 @@
     if (e.code === 'Delete' || e.code === 'Backspace') { e.preventDefault(); deleteSelected(); return; }
     if (e.code === 'Tab') { e.preventDefault(); cycleSelect(e.shiftKey ? -1 : 1); return; }
     if (e.code === 'KeyF') { e.preventDefault(); setStageOnly(!S.stageOnly); return; }
+    if (e.code === 'KeyR') { e.preventDefault(); toggleRec(); return; }
+    if (e.code === 'KeyL' && S.stageOnly) { e.preventDefault(); setStageLines(!S.stageLines); return; }
     const l = S.selected || det.lines[0];
     if (l && (e.code === 'ArrowUp' || e.code === 'ArrowDown')) {
       e.preventDefault();
@@ -726,20 +734,27 @@
     const horiz = ev.line.orient === 'h';
     const idx = horiz ? ev.cell : (det.cells - 1 - ev.cell);  // vertical: top = high
     const oct = Math.floor(idx / steps.length);
-    const midi = AM.clamp(S.root + steps[idx % steps.length] + 12 * oct + 12 * ev.line.octave, 12, 120);
-    const freq = AM.midiToFreq(midi);
+    const midiNote = AM.clamp(S.root + steps[idx % steps.length] + 12 * oct + 12 * ev.line.octave, 12, 120);
+    const freq = AM.midiToFreq(midiNote);
 
     let ok = false;
-    if (S.engineOn) {
+    // the audio clock is also the MIDI clock, so start it even when AUDIO is off
+    if (S.engineOn || midi.enabled) {
       if (!engine.ready) engine.init();
       else if (engine.ctx.state === 'suspended') engine.resume();
+    }
+    const when = qTime();
+    if (S.engineOn) {
       ok = engine.trigger({
         freq: freq,
         vel: ev.vel,
         pan: AM.clamp(ev.nx * 2 - 1, -1, 1) * 0.75,
-        when: qTime(),
+        when: when,
         voice: S.voice
       });
+    }
+    if (midi.enabled) {
+      midi.note(midiNote, ev.vel, when - engine.now(), det.lines.indexOf(ev.line));
     }
 
     const stampEv = {
@@ -747,7 +762,7 @@
       ny: ev.ny,
       vel: ev.vel,
       r: ev.r, g: ev.g, b: ev.b,
-      pitchNorm: AM.clamp((midi - S.root) / 36, 0, 1)
+      pitchNorm: AM.clamp((midiNote - S.root) / 36, 0, 1)
     };
     stampEv.ramp = ev.line.color ? [ev.line.color] : ramp();
     spectro.stamp(stampEv, engine.ready ? engine.getSpectrum() : null);
@@ -822,7 +837,7 @@
   function drawOverlay() {
     const c = octx, W = over.width, H = over.height;
     c.clearRect(0, 0, W, H);
-    if (!video.src || !vrect.w) return;
+    if (!video.src || !vrect.w || !linesShown()) return;
     const R = vrect;
 
     c.save();
@@ -934,6 +949,10 @@
     }
 
     if (spectro) spectro.frame(engine.ready ? engine.getSpectrum() : null, S.playing);
+    if (recorder && recorder.recording()) {
+      if (recorder.kind === 'video') recorder.tick();
+      paintRecClock();
+    }
 
     drawTimeline();
     drawTally();
@@ -955,7 +974,12 @@
     ['SCL', function () { return S.scale + ' ' + AM.midiToName(S.root); }],
     ['CLK', function () { return ('000' + Math.round(S.bpm)).slice(-3) + ' ' + AM.QUANT[S.quantIdx].label; }],
     ['VCE', function () { return S.voice; }],
-    ['AUD', function () { return audioState(); }]
+    ['AUD', function () { return audioState(); }],
+    ['I/O', function () {
+      const r = recorder && recorder.recording() ? 'REC ' + clock(recorder.elapsed()) : 'REC —';
+      const m = midi.enabled ? (midi.output() ? 'MIDI ' + (midi.route === 'line' ? 'CH/LINE' : 'CH' + (midi.channel + 1)) : 'MIDI NO DEV') : 'MIDI OFF';
+      return r + ' · ' + m;
+    }]
   ];
   let footBuilt = null;
   function updateFoot() {
@@ -995,6 +1019,307 @@
     toastT = setTimeout(function () { el.classList.remove('show'); }, 2400);
   }
 
+  /* ================================================================
+     I/O — recording, MIDI out, state (share link / file / autosave)
+     ================================================================ */
+  const STATE_KEY = 'nijisen.threshold.state';
+  const AUTOSAVE_KEY = 'nijisen.threshold.autosave';
+
+  function linesShown() { return !(S.stageOnly && !S.stageLines); }
+  function clock(sec) {
+    sec = Math.max(0, sec | 0);
+    return ('0' + Math.floor(sec / 60)).slice(-2) + ':' + ('0' + sec % 60).slice(-2);
+  }
+
+  /* ---------- drawer ---------- */
+  function openDrawer() {
+    $('#ioDrawer').hidden = false;
+    $('#btnIO').dataset.on = 'true';
+    paintMidiUI(); paintRecUI();
+  }
+  function closeDrawer() {
+    const d = $('#ioDrawer'); if (d) d.hidden = true;
+    const b = $('#btnIO'); if (b) b.dataset.on = 'false';
+  }
+
+  /* ---------- stage line visibility ---------- */
+  function setStageLines(on) {
+    S.stageLines = !!on;
+    $('#sbLines').dataset.on = S.stageLines ? 'true' : 'false';
+    if (!S.stageLines) drag = null;
+    toast(S.stageLines ? '偵測線：顯示' : '偵測線：隱藏（仍持續偵測與發聲）');
+  }
+
+  /* ---------- recording ---------- */
+  function recSources() {
+    return {
+      stage: stage, overlay: over, plate: $('#specCanvas'),
+      showLines: linesShown(), withPlate: S.recPlate
+    };
+  }
+  function toggleRec() {
+    if (!recorder) return;
+    if (recorder.recording()) { recorder.stop(); return; }
+    if (!AM.Recorder.supported()) { toast('這個瀏覽器不支援錄製'); return; }
+    if (S.recKind === 'video' && !video.src) { toast('影片錄製需要先載入影片'); return; }
+    ensureAudio();
+    try {
+      recorder.start(S.recKind);
+      if (!S.engineOn && S.recKind === 'audio') toast('● REC — 注意：AUDIO 關閉中，錄到的會是靜音');
+      else toast('● REC ' + (S.recKind === 'video' ? 'VIDEO' : 'AUDIO') + ' — 再按一次或 R 停止並下載');
+    } catch (e) {
+      toast('無法開始錄製：' + e.message);
+    }
+  }
+  let lastClock = -1;
+  function paintRecClock() {
+    const t = recorder.elapsed() | 0;
+    if (t === lastClock) return;
+    lastClock = t;
+    const txt = clock(t);
+    $('#recRead').textContent = txt;
+    $('#statusText').textContent = 'REC ' + txt;
+  }
+  function paintSeg(id, v) {
+    const el = $(id); if (!el) return;
+    el.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v); });
+  }
+  function paintRecUI() {
+    const on = !!(recorder && recorder.recording());
+    ['#btnRec', '#sbRec', '#ioRec'].forEach(function (id) {
+      const b = $(id); if (b) b.dataset.on = on ? 'true' : 'false';
+    });
+    $('#ioRec').textContent = on ? 'STOP' : 'REC';
+    $('#sbRec').textContent = on ? 'STOP' : 'REC';
+    document.body.classList.toggle('is-recording', on);
+    if (!on) {
+      lastClock = -1;
+      $('#recRead').textContent = '00:00';
+      $('#statusText').textContent = S.playing ? 'RUNNING' : (video.src ? 'HELD' : 'idle');
+    }
+    paintSeg('#segRecKind', S.recKind);
+    paintSeg('#segRecPlate', S.recPlate ? 'on' : 'off');
+    // kind and plate choice cannot change mid-take
+    ['#segRecKind', '#segRecPlate'].forEach(function (id) { $(id).classList.toggle('dim', on); });
+  }
+
+  /* ---------- MIDI ---------- */
+  function paintMidiUI() {
+    const sup = AM.Midi.supported();
+    $('#midiOn').dataset.on = midi.enabled ? 'true' : 'false';
+    const out = midi.output();
+    let status;
+    if (!sup) status = 'UNSUPPORTED';
+    else if (!midi.enabled) status = 'OFF';
+    else if (!out) status = 'NO DEVICE';
+    else status = 'READY · ' + midi.sent + ' sent';
+    $('#midiStatus').textContent = status;
+    const name = out ? out.name : (midi.enabled ? 'no output' : '—');
+    $('#midiOutRead').textContent = name.length > 26 ? name.slice(0, 24) + '..' : name;
+    $('#midiChRead').textContent = midi.route === 'line' ? 'CH = LINE' : 'CH ' + (midi.channel + 1);
+    paintSeg('#segMidiRoute', midi.route);
+    paintSeg('#segMidiGate', String(midi.gate));
+    if (!sup) $('#midiNote').textContent = '這個瀏覽器不支援 Web MIDI（Safari / iOS 目前沒有）。請改用 Chrome、Edge 或 Firefox。';
+  }
+
+  /* ---------- state ---------- */
+  const HEX = /^#[0-9a-f]{6}$/i;
+  function numIn(v, lo, hi, d) { return (typeof v === 'number' && isFinite(v)) ? AM.clamp(v, lo, hi) : d; }
+  function oneOf(v, list, d) { return list.indexOf(v) >= 0 ? v : d; }
+
+  function captureState() {
+    return {
+      app: 'nijisen', mod: 'threshold', v: 1,
+      det: { mode: det.mode, sens: +det.sens.toFixed(3), cells: det.cells, hold: det.hold, band: det.band },
+      pitch: { root: S.root, scale: S.scale, q: S.quantIdx, bpm: Math.round(S.bpm) },
+      sound: { voice: S.voice, vol: +S.vol.toFixed(2), fx: Object.assign({}, engine.fx) },
+      lines: det.lines.map(function (l) {
+        return { o: l.orient, p: +l.pos.toFixed(4), c: l.color || null, oc: l.octave || 0 };
+      }),
+      look: {
+        scheme: S.scheme, custom: S.custom, plate: spectro ? spectro.mode : 'scroll',
+        theme: S.theme, layout: S.layoutAuto ? 'auto' : S.layout
+      },
+      stage: { plate: S.stagePlate, lines: S.stageLines },
+      io: { rec: S.recKind, recPlate: S.recPlate, ch: midi.channel, route: midi.route, gate: midi.gate }
+    };
+  }
+
+  /* a shared link is untrusted input: every field is whitelisted or clamped */
+  function applyState(st, quiet) {
+    if (!st || typeof st !== 'object') return false;
+    if (st.app && st.app !== 'nijisen') return false;
+    if (st.mod && st.mod !== 'threshold') return false;
+
+    const d = st.det || {}, p = st.pitch || {}, so = st.sound || {}, lk = st.look || {},
+      sg = st.stage || {}, io = st.io || {};
+
+    det.mode = oneOf(d.mode, ['motion', 'luma', 'edge'], det.mode);
+    paintSeg('#segMode', det.mode);
+    setRange('#pSens', numIn(d.sens, 0.01, 1, det.sens));
+    setRange('#pCells', Math.round(numIn(d.cells, 4, 48, det.cells)));
+    setRange('#pHold', Math.round(numIn(d.hold, 30, 600, det.hold) / 10) * 10);
+    setRange('#pBand', Math.round(numIn(d.band, 1, 24, det.band)));
+
+    setRange('#pRoot', Math.round(numIn(p.root, 24, 72, S.root)));
+    setRange('#pBpm', Math.round(numIn(p.bpm, 40, 200, S.bpm)));
+    S.scale = oneOf(p.scale, AM.SCALE_KEYS, S.scale);
+    S.quantIdx = Math.round(numIn(p.q, 0, AM.QUANT.length - 1, S.quantIdx));
+
+    S.voice = oneOf(so.voice, ['BELL', 'PLUCK', 'GLITCH'], S.voice);
+    engine.setVoice(S.voice);
+    setRange('#pVol', numIn(so.vol, 0, 1, S.vol));
+    if (so.fx && typeof so.fx === 'object') {
+      ['REV', 'DLY', 'LPF', 'BIT', 'SUB'].forEach(function (k) {
+        if (typeof so.fx[k] === 'boolean') engine.fx[k] = so.fx[k];
+      });
+      engine.applyFx();
+    }
+
+    if (Array.isArray(st.lines)) {
+      det.lines.length = 0;
+      st.lines.slice(0, 8).forEach(function (li) {
+        if (!li || typeof li !== 'object') return;
+        const l = det.addLine(oneOf(li.o, ['h', 'v'], 'h'), numIn(li.p, 0.01, 0.99, 0.5));
+        if (!l) return;
+        l.color = typeof li.c === 'string' && HEX.test(li.c) ? li.c : null;
+        l.octave = Math.round(numIn(li.oc, -3, 3, 0));
+      });
+      det.reset();
+      select(null);
+    }
+
+    S.scheme = oneOf(lk.scheme, AM.SCHEME_KEYS, S.scheme);
+    if (typeof lk.custom === 'string' && HEX.test(lk.custom)) S.custom = lk.custom;
+    if (spectro) {
+      const m = oneOf(lk.plate, ['scroll', 'stack', 'ring'], spectro.mode);
+      spectro.setMode(m); paintSeg('#segSpecMode', m);
+    }
+    const th = oneOf(lk.theme, ['light', 'dark'], S.theme);
+    if (th !== S.theme) setTheme(th, true);
+    const lay = oneOf(lk.layout, ['auto', 'landscape', 'portrait'], null);
+    if (lay === 'auto') { S.layoutAuto = true; autoLayout(); paintLayoutSeg(); }
+    else if (lay) setLayout(lay, true);
+
+    if (typeof sg.plate === 'boolean') {
+      S.stagePlate = sg.plate;
+      $('#sbPlate').dataset.on = S.stagePlate ? 'true' : 'false';
+      document.body.classList.toggle('stage-noplate', !S.stagePlate);
+    }
+    if (typeof sg.lines === 'boolean') {
+      S.stageLines = sg.lines;
+      $('#sbLines').dataset.on = S.stageLines ? 'true' : 'false';
+    }
+
+    S.recKind = oneOf(io.rec, ['audio', 'video'], S.recKind);
+    if (typeof io.recPlate === 'boolean') S.recPlate = io.recPlate;
+    midi.channel = Math.round(numIn(io.ch, 0, 15, midi.channel));
+    midi.route = oneOf(io.route, ['all', 'line'], midi.route);
+    midi.gate = oneOf(io.gate, [60, 140, 400], midi.gate);
+
+    paintRails(); paintColorUI(); syncPlateRamp(); paintLineUI();
+    paintRecUI(); paintMidiUI(); updateFoot();
+    if (!quiet) toast('已套用設定 — ' + det.lines.length + ' 條線 · ' + S.scale + ' ' + AM.midiToName(S.root) + ' · ' + S.voice);
+    return true;
+  }
+
+  function buildIO() {
+    recorder = new AM.Recorder(engine, recSources);
+    recorder.onchange = paintRecUI;
+    recorder.onsaved = function (info) {
+      toast('已下載 ' + info.name + (info.fallback ? '（WAV 轉檔失敗，改存原始錄音）' : ''));
+    };
+    midi.onchange = paintMidiUI;
+
+    $('#btnIO').addEventListener('click', function () {
+      if ($('#ioDrawer').hidden) openDrawer(); else closeDrawer();
+    });
+    $('#ioClose').addEventListener('click', closeDrawer);
+
+    ['#btnRec', '#sbRec', '#ioRec'].forEach(function (id) { $(id).addEventListener('click', toggleRec); });
+    bindSeg('#segRecKind', function (v) {
+      if (!recorder.recording()) S.recKind = v;
+      paintRecUI();
+    });
+    bindSeg('#segRecPlate', function (v) {
+      if (!recorder.recording()) S.recPlate = v === 'on';
+      paintRecUI();
+    });
+
+    $('#sbLines').addEventListener('click', function () { setStageLines(!S.stageLines); });
+
+    $('#midiOn').addEventListener('click', function () {
+      if (midi.enabled) { midi.disable(); toast('MIDI OUT 關閉（已送 all notes off）'); return; }
+      midi.enable().then(function () {
+        toast(midi.output() ? 'MIDI OUT → ' + midi.output().name : 'MIDI 已啟用，但沒有偵測到輸出裝置');
+      }).catch(function (e) {
+        toast('MIDI 無法啟用：' + (e && e.message ? e.message : '權限被拒'));
+        paintMidiUI();
+      });
+    });
+    $('#midiOutPrev').addEventListener('click', function () { midi.cycleOutput(-1); });
+    $('#midiOutNext').addEventListener('click', function () { midi.cycleOutput(1); });
+    $('#midiChPrev').addEventListener('click', function () { midi.setChannel(midi.channel - 1); });
+    $('#midiChNext').addEventListener('click', function () { midi.setChannel(midi.channel + 1); });
+    bindSeg('#segMidiRoute', function (v) { midi.panic(); midi.route = v; paintMidiUI(); });
+    bindSeg('#segMidiGate', function (v) { midi.gate = parseInt(v, 10); paintMidiUI(); });
+    $('#midiPanic').addEventListener('click', function () { midi.panic(); toast('MIDI PANIC — all notes off'); });
+
+    $('#stLink').addEventListener('click', function () {
+      const url = AM.State.writeHash(captureState());
+      AM.State.copy(url).then(function () {
+        toast('分享連結已複製（' + url.length + ' 字元）');
+      }).catch(function () {
+        toast('連結已寫入網址列，請手動複製');
+      });
+    });
+    $('#stSave').addEventListener('click', function () {
+      const blob = new Blob([JSON.stringify(captureState(), null, 2)], { type: 'application/json' });
+      AM.download(blob, 'nijisen-threshold-' + AM.fileStamp() + '.json');
+      toast('設定檔已下載');
+    });
+    $('#stLoad').addEventListener('click', function () { $('#stFile').click(); });
+    $('#stFile').addEventListener('change', function (e) {
+      const f = e.target.files[0]; if (!f) return;
+      AM.State.readFile(f).then(function (st) {
+        if (!applyState(st)) toast('這不是虹線 01 的設定檔');
+      }).catch(function () { toast('設定檔讀取失敗'); });
+      e.target.value = '';
+    });
+    bindSeg('#segAutosave', function (v) {
+      S.autosave = v === 'on';
+      try { localStorage.setItem(AUTOSAVE_KEY, S.autosave ? 'on' : 'off'); } catch (err) { }
+      if (!S.autosave) AM.State.clear(STATE_KEY);
+      toast(S.autosave ? '自動保存：開（重新整理會回到上次設定）' : '自動保存：關（已清除保存的設定）');
+    });
+
+    window.addEventListener('hashchange', function () {
+      const st = AM.State.fromHash();
+      if (st) applyState(st);
+    });
+
+    let lastSaved = '';
+    setInterval(function () {
+      if (!S.autosave) return;
+      const st = captureState(), str = JSON.stringify(st);
+      if (str !== lastSaved) { AM.State.save(STATE_KEY, st); lastSaved = str; }
+    }, 1500);
+
+    paintRecUI(); paintMidiUI();
+  }
+
+  /* boot order: a share link wins, then the last autosave */
+  function restoreState() {
+    try { S.autosave = localStorage.getItem(AUTOSAVE_KEY) !== 'off'; } catch (e) { }
+    paintSeg('#segAutosave', S.autosave ? 'on' : 'off');
+    const fromLink = AM.State.fromHash();
+    if (fromLink && applyState(fromLink, true)) { toast('已載入分享連結的設定'); return; }
+    if (S.autosave) {
+      const saved = AM.State.load(STATE_KEY);
+      if (saved && applyState(saved, true)) toast('已回復上次的設定');
+    }
+  }
+
   /* ---------------- boot ---------------- */
   function boot() {
     const cv = $('#specCanvas');
@@ -1013,6 +1338,8 @@
     bindSeg('#segTheme', function (v) { setTheme(v); });
     setTheme('light', true);
     syncPlateRamp();
+    buildIO();
+    restoreState();
     paintLineUI();
     drawOrnaments();
     updateFoot();
@@ -1068,6 +1395,11 @@
     S: S, engine: engine, det: det, video: video,
     spectro: function () { return spectro; },
     draw: { timeline: drawTimeline, tally: drawTally, overlay: drawOverlay, foot: updateFoot },
-    setLayout: setLayout
+    setLayout: setLayout,
+    midi: midi,
+    recorder: function () { return recorder; },
+    captureState: captureState,
+    applyState: applyState,
+    fire: fire
   };
 })(window);
