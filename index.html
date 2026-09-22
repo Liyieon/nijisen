@@ -83,6 +83,7 @@
           <canvas class="dz-mark" id="dzMark" width="148" height="148"></canvas>
           <div class="dz-txt">DROP VIDEO FILE&nbsp;&nbsp;/&nbsp;&nbsp;CLICK TO LOAD</div>
           <div class="dz-sub">mp4 · webm · mov — 影片不會上傳，全部在本機運算</div>
+          <button class="sq-btn led-green dz-cam" id="dzCam">USE CAMERA</button>
         </div>
         <input type="file" id="fileInput" accept="video/*" hidden>
       </div>
@@ -97,6 +98,7 @@
       <div class="tl-wrap" id="tlWrap"><canvas id="timeline"></canvas></div>
       <div class="time-read"><span id="timeRead">0:00 <b>/</b> 0:00</span></div>
       <button class="sq-btn wide led-amber" id="btnFile" data-idx="09">FILE</button>
+      <button class="sq-btn wide led-green" id="btnCam" data-idx="10" data-on="false">CAM</button>
     </div>
 
     <!-- CONSOLE : param bank + plate. display:contents in landscape,
@@ -211,6 +213,30 @@
     <span class="dr-title">[ I/O ]</span>
     <button class="sq-btn tiny led-red" id="ioClose">CLOSE</button>
   </div>
+
+  <section class="dr-sec">
+    <div class="pmod-hd">[ SOURCE ]</div>
+    <div class="dr-row">
+      <button class="sq-btn led-green" id="ioCam" data-on="false">CAMERA</button>
+      <span class="dr-read" id="camStatus">OFF</span>
+    </div>
+    <div class="dr-row">
+      <div class="linepick grow">
+        <button class="lp-arrow" id="camPrev">&#9664;</button>
+        <span class="lp-read" id="camRead">no camera</span>
+        <button class="lp-arrow" id="camNext">&#9654;</button>
+      </div>
+    </div>
+    <div class="dr-row">
+      <span class="dr-lab">MIRROR</span>
+      <div class="seg small" id="segCamMirror">
+        <button data-v="on" class="on">ON</button>
+        <button data-v="off">OFF</button>
+      </div>
+      <button class="sq-btn tiny led-amber" id="ioFile">VIDEO FILE</button>
+    </div>
+    <p class="dr-note" id="camNote">攝影機畫面只留在這台電腦，不會上傳。MIRROR 開著時預覽和偵測一起左右翻，動作方向跟你看到的一致。快捷鍵 C。</p>
+  </section>
 
   <section class="dr-sec">
     <div class="pmod-hd">[ RECORD ]</div>

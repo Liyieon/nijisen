@@ -28,6 +28,8 @@
     stageLines: true,         // draw the scan lines over the video inside STAGE
     recKind: 'audio',         // 'audio' | 'video'
     recPlate: true,           // composite the plate into video recordings
+    source: 'none',           // 'none' | 'file' | 'cam'
+    camMirror: true,          // mirror the live camera, preview and detection alike
     autosave: true,
     theme: 'light'
   };
@@ -78,9 +80,25 @@
     vrect = { x: (cw - w) / 2, y: (ch - h) / 2, w: w, h: h };
   }
 
-  /* ---------------- file loading ---------------- */
+  /* ---------------- sources: video file or live camera ---------------- */
+  function hasSource() { return !!(video.src || video.srcObject); }
+  function isCam() { return S.source === 'cam'; }
+  /* the camera image is mirrored on the way in, so the preview, the detection
+     canvas and the recording all agree with what the player sees of themselves */
+  function mirrored() { return isCam() && S.camMirror; }
+
+  function drawSource(ctx, x, y, w, h) {
+    if (!mirrored()) { ctx.drawImage(video, x, y, w, h); return; }
+    ctx.save();
+    ctx.translate(x + w, y); ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, w, h);
+    ctx.restore();
+  }
+
   function loadFile(file) {
     if (!file) return;
+    stopCam();
+    S.source = 'file';
     if (video.src) URL.revokeObjectURL(video.src);
     video.src = URL.createObjectURL(file);
     S.fileName = file.name.length > 26 ? file.name.slice(0, 24) + '..' : file.name;
@@ -97,7 +115,140 @@
 
   $('#dropzone').addEventListener('click', function () { $('#fileInput').click(); });
   $('#btnFile').addEventListener('click', function () { $('#fileInput').click(); });
+  $('#ioFile').addEventListener('click', function () { $('#fileInput').click(); });
   $('#fileInput').addEventListener('change', function (e) { loadFile(e.target.files[0]); });
+
+  /* ---------------- camera ---------------- */
+  let camStream = null;
+  let camList = [];          // videoinput devices, only labelled after the first grant
+  let camId = null;          // deviceId of the running camera
+  let camT0 = 0;             // wall clock when the live feed started
+
+  function camSupported() {
+    return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  }
+
+  function stopCam() {
+    if (!camStream) return;
+    camStream.getTracks().forEach(function (t) { t.stop(); });
+    camStream = null;
+    video.srcObject = null;
+    if (S.source === 'cam') {
+      S.source = 'none'; S.playing = false;
+      S.fileName = 'no media';
+      $('#btnPlay').textContent = 'PLAY'; $('#sbPlay').textContent = 'PLAY';
+      $('#statusText').textContent = 'idle'; $('#statusText').classList.remove('live');
+      // nothing left to show: offer the loader again
+      if (!video.src) {
+        $('#dropzone').classList.remove('hide');
+        sctx.clearRect(0, 0, stage.width, stage.height);
+        octx.clearRect(0, 0, over.width, over.height);
+      }
+    }
+    paintCamUI();
+  }
+
+  function listCams() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return Promise.resolve([]);
+    return navigator.mediaDevices.enumerateDevices().then(function (ds) {
+      camList = ds.filter(function (d) { return d.kind === 'videoinput'; });
+      paintCamUI();
+      return camList;
+    }).catch(function () { return []; });
+  }
+
+  function startCam(deviceId) {
+    if (!camSupported()) { toast('這個瀏覽器不支援攝影機'); return; }
+    if (!g.isSecureContext) {
+      toast('攝影機需要 https 或 localhost — 請用 start.bat 開啟本機伺服器');
+      return;
+    }
+    const want = { video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'user' }, audio: false };
+    want.video.width = { ideal: 1280 };
+    want.video.height = { ideal: 720 };
+    $('#camStatus').textContent = 'ASKING';
+    navigator.mediaDevices.getUserMedia(want).then(function (stream) {
+      stopCam();
+      camStream = stream;
+      camId = (stream.getVideoTracks()[0].getSettings() || {}).deviceId || deviceId || null;
+      if (video.src) { URL.revokeObjectURL(video.src); video.removeAttribute('src'); video.load(); }
+      video.srcObject = stream;
+      S.source = 'cam';
+      S.fileName = 'CAMERA';
+      camT0 = performance.now();
+      // a live stream has no timeline to loop over
+      video.loop = false;
+      $('#btnLoop').dataset.on = 'false';
+      video.addEventListener('loadedmetadata', function once() {
+        video.removeEventListener('loadedmetadata', once);
+        setupAnalysis(); computeRect(); autoLayout();
+        $('#dropzone').classList.add('hide');
+        det.tainted = false;
+        play();
+        listCams();
+        toast('CAMERA LIVE — 動作碰到線就發聲，按 REC 可以錄下來');
+      });
+      // a track the user revokes or a camera unplugged mid-take
+      stream.getVideoTracks()[0].addEventListener('ended', function () {
+        stopCam();
+        toast('攝影機已中斷');
+      });
+      paintCamUI();
+    }).catch(function (err) {
+      const n = err && err.name;
+      if (n === 'NotAllowedError') toast('攝影機被拒絕 — 請在網址列左邊的鎖頭圖示允許');
+      else if (n === 'NotFoundError') toast('找不到攝影機');
+      else if (n === 'NotReadableError') toast('攝影機被別的程式佔用了');
+      else toast('攝影機開啟失敗：' + (err && err.message ? err.message : n));
+      paintCamUI();
+    });
+  }
+
+  function toggleCam() { isCam() ? stopCam() : startCam(camId); }
+  function camElapsed() { return isCam() ? (performance.now() - camT0) / 1000 : 0; }
+
+  function cycleCam(dir) {
+    if (camList.length < 2) { listCams(); return; }
+    let i = camList.findIndex(function (d) { return d.deviceId === camId; });
+    if (i < 0) i = 0;
+    i = (i + dir + camList.length) % camList.length;
+    startCam(camList[i].deviceId);
+  }
+
+  function camLabel() {
+    if (!camList.length) return camSupported() ? 'no camera' : 'unsupported';
+    const d = camList.find(function (x) { return x.deviceId === camId; }) || camList[0];
+    const name = d.label || ('CAM ' + (camList.indexOf(d) + 1));
+    return name.length > 22 ? name.slice(0, 20) + '..' : name;
+  }
+
+  function paintCamUI() {
+    const on = isCam();
+    ['#btnCam', '#ioCam'].forEach(function (id) {
+      const b = $(id); if (b) b.dataset.on = on ? 'true' : 'false';
+    });
+    $('#btnCam').textContent = on ? 'CAM ON' : 'CAM';
+    $('#camStatus').textContent = on ? 'LIVE' : 'OFF';
+    $('#camRead').textContent = camLabel();
+    document.body.classList.toggle('is-live', on);
+    paintSeg('#segCamMirror', S.camMirror ? 'on' : 'off');
+    if (!camSupported()) $('#camNote').textContent = '這個瀏覽器不支援攝影機輸入。';
+  }
+
+  $('#btnCam').addEventListener('click', toggleCam);
+  $('#ioCam').addEventListener('click', toggleCam);
+  $('#dzCam').addEventListener('click', function (e) { e.stopPropagation(); startCam(null); });
+  $('#camPrev').addEventListener('click', function () { cycleCam(-1); });
+  $('#camNext').addEventListener('click', function () { cycleCam(1); });
+  $('#segCamMirror').addEventListener('click', function (e) {
+    const b = e.target.closest('button'); if (!b) return;
+    S.camMirror = b.dataset.v === 'on';
+    det.reset();
+    paintCamUI();
+  });
+  if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+    navigator.mediaDevices.addEventListener('devicechange', listCams);
+  }
 
   const vp = $('#viewport');
   ['dragenter', 'dragover'].forEach(function (t) {
@@ -113,7 +264,7 @@
 
   /* ---------------- transport ---------------- */
   function play() {
-    if (!video.src) { $('#fileInput').click(); return; }
+    if (!hasSource()) { $('#fileInput').click(); return; }
     ensureAudio();
     video.play().then(function () {
       S.playing = true;
@@ -679,7 +830,7 @@
     return { x: (cx - vrect.x) / Math.max(1, vrect.w), y: (cy - vrect.y) / Math.max(1, vrect.h) };
   }
   vp.addEventListener('pointerdown', function (e) {
-    if (!video.src || !linesShown()) return;   // hidden lines cannot be grabbed
+    if (!hasSource() || !linesShown()) return;   // hidden lines cannot be grabbed
     const n = toNorm(e);
     const l = det.pick(n.x, n.y, 0.035);
     select(l);
@@ -694,7 +845,7 @@
     if (drag) {
       drag.pos = AM.clamp(drag.orient === 'h' ? n.y : n.x, 0.01, 0.99);
       det.reset();
-    } else if (video.src) {
+    } else if (hasSource()) {
       vp.style.cursor = linesShown() && det.pick(n.x, n.y, 0.035) ? 'grab' : 'default';
     }
   });
@@ -711,6 +862,7 @@
     if (e.code === 'Tab') { e.preventDefault(); cycleSelect(e.shiftKey ? -1 : 1); return; }
     if (e.code === 'KeyF') { e.preventDefault(); setStageOnly(!S.stageOnly); return; }
     if (e.code === 'KeyR') { e.preventDefault(); toggleRec(); return; }
+    if (e.code === 'KeyC') { e.preventDefault(); toggleCam(); return; }
     if (e.code === 'KeyL' && S.stageOnly) { e.preventDefault(); setStageLines(!S.stageLines); return; }
     const l = S.selected || det.lines[0];
     if (l && (e.code === 'ArrowUp' || e.code === 'ArrowDown')) {
@@ -837,7 +989,7 @@
   function drawOverlay() {
     const c = octx, W = over.width, H = over.height;
     c.clearRect(0, 0, W, H);
-    if (!video.src || !vrect.w || !linesShown()) return;
+    if (!hasSource() || !vrect.w || !linesShown()) return;
     const R = vrect;
 
     c.save();
@@ -934,10 +1086,10 @@
       computeRect();
       sctx.fillStyle = AM.STAGE_BG;
       sctx.fillRect(0, 0, stage.width, stage.height);
-      sctx.drawImage(video, vrect.x, vrect.y, vrect.w, vrect.h);
+      drawSource(sctx, vrect.x, vrect.y, vrect.w, vrect.h);
 
       if (aw) {
-        actx.drawImage(video, 0, 0, aw, ah);
+        drawSource(actx, 0, 0, aw, ah);
         const evs = det.analyze(actx, aw, ah, ts);
         if (det.tainted) {
           det.enabled = false;
@@ -956,7 +1108,9 @@
 
     drawTimeline();
     drawTally();
-    if (video.duration) {
+    if (isCam()) {
+      $('#timeRead').innerHTML = 'LIVE <b>/</b> ' + clock(camElapsed());
+    } else if (video.duration) {
       $('#timeRead').innerHTML = fmt(video.currentTime) + ' <b>/</b> ' + fmt(video.duration);
     }
     if (ts - lastFoot > 120) { lastFoot = ts; updateFoot(); }
@@ -1061,7 +1215,7 @@
     if (!recorder) return;
     if (recorder.recording()) { recorder.stop(); return; }
     if (!AM.Recorder.supported()) { toast('這個瀏覽器不支援錄製'); return; }
-    if (S.recKind === 'video' && !video.src) { toast('影片錄製需要先載入影片'); return; }
+    if (S.recKind === 'video' && !hasSource()) { toast('影片錄製需要先載入影片或開啟攝影機'); return; }
     ensureAudio();
     try {
       recorder.start(S.recKind);
@@ -1095,7 +1249,7 @@
     if (!on) {
       lastClock = -1;
       $('#recRead').textContent = '00:00';
-      $('#statusText').textContent = S.playing ? 'RUNNING' : (video.src ? 'HELD' : 'idle');
+      $('#statusText').textContent = S.playing ? 'RUNNING' : (hasSource() ? 'HELD' : 'idle');
     }
     paintSeg('#segRecKind', S.recKind);
     paintSeg('#segRecPlate', S.recPlate ? 'on' : 'off');
@@ -1141,7 +1295,7 @@
         theme: S.theme, layout: S.layoutAuto ? 'auto' : S.layout
       },
       stage: { plate: S.stagePlate, lines: S.stageLines },
-      io: { rec: S.recKind, recPlate: S.recPlate, ch: midi.channel, route: midi.route, gate: midi.gate }
+      io: { rec: S.recKind, recPlate: S.recPlate, mir: S.camMirror, ch: midi.channel, route: midi.route, gate: midi.gate }
     };
   }
 
@@ -1213,12 +1367,13 @@
 
     S.recKind = oneOf(io.rec, ['audio', 'video'], S.recKind);
     if (typeof io.recPlate === 'boolean') S.recPlate = io.recPlate;
+    if (typeof io.mir === 'boolean') S.camMirror = io.mir;
     midi.channel = Math.round(numIn(io.ch, 0, 15, midi.channel));
     midi.route = oneOf(io.route, ['all', 'line'], midi.route);
     midi.gate = oneOf(io.gate, [60, 140, 400], midi.gate);
 
     paintRails(); paintColorUI(); syncPlateRamp(); paintLineUI();
-    paintRecUI(); paintMidiUI(); updateFoot();
+    paintRecUI(); paintMidiUI(); paintCamUI(); updateFoot();
     if (!quiet) toast('已套用設定 — ' + det.lines.length + ' 條線 · ' + S.scale + ' ' + AM.midiToName(S.root) + ' · ' + S.voice);
     return true;
   }
@@ -1305,7 +1460,8 @@
       if (str !== lastSaved) { AM.State.save(STATE_KEY, st); lastSaved = str; }
     }, 1500);
 
-    paintRecUI(); paintMidiUI();
+    paintRecUI(); paintMidiUI(); paintCamUI();
+    listCams();
   }
 
   /* boot order: a share link wins, then the last autosave */
@@ -1344,7 +1500,7 @@
     drawOrnaments();
     updateFoot();
     requestAnimationFrame(loop);
-    toast('載入影片開始 — 按 ON 啟動音訊');
+    toast('載入影片或開啟攝影機開始 — 按 ON 啟動音訊');
   }
   /* printed ornaments: a spirograph plate mark and a scattered square field */
   function drawOrnaments() {

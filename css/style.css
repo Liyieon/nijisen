@@ -333,6 +333,9 @@ body::before{
 .dz-mark{margin:0 auto 16px;width:74px;height:74px}
 .dz-txt{font-size:11px;font-weight:700;letter-spacing:.22em}
 .dz-sub{font-size:9.5px;color:var(--ink-soft);margin-top:9px;letter-spacing:.05em}
+.dz-cam{margin-top:14px}
+/* a live feed has no timeline to scrub or loop */
+body.is-live .tl-wrap,body.is-live #btnLoop{opacity:.4;pointer-events:none}
 .dropzone.hot .dz-inner::before,.dropzone.hot .dz-inner::after{border-color:var(--riso);width:28px;height:28px}
 
 /* ---------------- transport ---------------- */
