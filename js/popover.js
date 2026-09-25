@@ -98,8 +98,11 @@
     const dock = document.querySelector('.dock');
     const dr = dock ? dock.getBoundingClientRect() : { right: 16 };
     const ar = this.anchor ? this.anchor.getBoundingClientRect() : { top: 80, height: 0 };
+    // never over the top bar: it holds the state readouts
+    const bar = document.querySelector('.topbar');
+    const T = bar && bar.offsetParent !== null ? bar.getBoundingClientRect().bottom + 10 : 14;
     const h = el.offsetHeight, H = g.innerHeight, M = 14;
-    const top = AM.clamp(ar.top + ar.height / 2 - h / 2, M, Math.max(M, H - h - M));
+    const top = AM.clamp(ar.top + ar.height / 2 - h / 2, T, Math.max(T, H - h - M));
     el.style.left = Math.round(dr.right + 12) + 'px';
     el.style.top = Math.round(top) + 'px';
   };

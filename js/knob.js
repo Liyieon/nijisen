@@ -1,6 +1,7 @@
-/* knob.js — a labelled knob bound to a hidden <input type=range>.
-   A glass disc inside a coloured value arc; the name, the reading and a
-   one-line hint sit with it so it is always clear what is being turned.
+/* knob.js — instrument knob bound to a hidden <input type=range>.
+   Look: knurled ring + tick collar + pointer, after industrial panel HUDs.
+   The code, the plain name, the reading and a one-line hint sit with it so
+   it is always clear what is being turned.
    Drag vertically (shift = fine), wheel, arrow keys, or double-click / Home
    to reset. */
 (function (g) {
@@ -25,7 +26,7 @@
       'A' + r + ' ' + r + ' 0 ' + large + ' 1 ' + p1[0].toFixed(2) + ' ' + p1[1].toFixed(2);
   }
 
-  const A0 = -135, A1 = 135;          // sweep of the arc
+  const A0 = -132, A1 = 132;          // sweep of the collar
 
   function Knob(o) {
     this.input = o.input;
@@ -36,7 +37,7 @@
     this.unit = o.unit || '';
     this.color = o.color || AM.PALETTE[0];
     this.onInput = o.onInput || function () { };
-    this.size = o.size || 60;
+    this.size = o.size || 58;
     this.def = parseFloat(this.input.value);
     this.build();
     const self = this;
@@ -53,27 +54,55 @@
     wrap.setAttribute('aria-label', this.name);
     wrap.setAttribute('aria-valuemin', this.input.min);
     wrap.setAttribute('aria-valuemax', this.input.max);
-    wrap.style.setProperty('--k', this.color);
     if (this.hint) wrap.title = this.name + '：' + this.hint + '（上下拖曳，雙擊回預設）';
 
+    // code on top, the plain name under it
     const cap = document.createElement('div');
     cap.className = 'k-cap';
-    const nm = document.createElement('b'); nm.textContent = this.name;
-    const code = document.createElement('span'); code.textContent = this.label;
-    cap.appendChild(nm); cap.appendChild(code);
+    const code = document.createElement('b'); code.textContent = this.label;
+    const nm = document.createElement('span'); nm.textContent = this.name;
+    cap.appendChild(code); cap.appendChild(nm);
 
     const svg = el('svg', { width: S, height: S, viewBox: '0 0 ' + S + ' ' + S, class: 'k-svg', 'aria-hidden': 'true' });
-    const rArc = cx - 3.5;
+
+    // tick collar
+    const rTick = cx - 2;
+    const ticks = el('g', { class: 'k-ticks' });
+    const N = 21;
+    for (let i = 0; i < N; i++) {
+      const a = A0 + (A1 - A0) * i / (N - 1);
+      const major = i % 5 === 0;
+      const p0 = polar(cx, cy, rTick, a);
+      const p1 = polar(cx, cy, rTick - (major ? 5 : 3), a);
+      ticks.appendChild(el('line', {
+        x1: p0[0].toFixed(2), y1: p0[1].toFixed(2), x2: p1[0].toFixed(2), y2: p1[1].toFixed(2),
+        'stroke-width': major ? 1.2 : 0.7
+      }));
+    }
+    svg.appendChild(ticks);
+
+    // value arc
+    const rArc = cx - 9;
     svg.appendChild(el('path', { class: 'k-track', d: arc(cx, cy, rArc, A0, A1), fill: 'none' }));
-    this.arcEl = el('path', { class: 'k-fill', d: '', fill: 'none' });
+    this.arcEl = el('path', { class: 'k-fill', d: '', fill: 'none', stroke: this.color });
     svg.appendChild(this.arcEl);
 
-    const rBody = cx - 10;
+    // knurled body
+    const rBody = cx - 14;
+    const knurl = el('g', { class: 'k-knurl' });
+    for (let i = 0; i < 30; i++) {
+      const a = i * 12;
+      const p0 = polar(cx, cy, rBody, a), p1 = polar(cx, cy, rBody - 2.6, a);
+      knurl.appendChild(el('line', { x1: p0[0].toFixed(2), y1: p0[1].toFixed(2), x2: p1[0].toFixed(2), y2: p1[1].toFixed(2) }));
+    }
     svg.appendChild(el('circle', { class: 'k-body', cx: cx, cy: cy, r: rBody }));
-    svg.appendChild(el('circle', { class: 'k-sheen', cx: cx, cy: cy - 1, r: rBody - 1.5 }));
+    svg.appendChild(knurl);
+
+    // pointer
     this.ptrG = el('g', {});
-    this.ptrG.appendChild(el('circle', { class: 'k-ptr', cx: cx, cy: cy - rBody + 6, r: 2.4 }));
+    this.ptrG.appendChild(el('line', { class: 'k-ptr', x1: cx, y1: cy - 2, x2: cx, y2: cy - rBody + 1 }));
     svg.appendChild(this.ptrG);
+    svg.appendChild(el('circle', { class: 'k-hub', cx: cx, cy: cy, r: 1.6 }));
 
     const val = document.createElement('div');
     val.className = 'k-val';
@@ -171,5 +200,52 @@
 
   Knob.prototype.mount = function (parent) { parent.appendChild(this.root); return this; };
 
+  /* ---- spirograph rosette, used as plate + panel ornament ---- */
+  function rosette(ctx, cx, cy, R, opts) {
+    opts = opts || {};
+    const petals = opts.petals || 61;
+    const r = opts.r || R * 0.62;
+    const d = opts.d || R * 0.36;
+    ctx.save();
+    ctx.globalAlpha = opts.alpha === undefined ? 0.18 : opts.alpha;
+    ctx.strokeStyle = opts.color || '#5c6b5c';
+    ctx.lineWidth = opts.lineWidth || 0.5;
+    for (let k = 0; k < petals; k++) {
+      const th = k / petals * Math.PI * 2;
+      ctx.beginPath();
+      for (let i = 0; i <= 90; i++) {
+        const t = i / 90 * Math.PI * 2;
+        // hypotrochoid, rotated per petal
+        const x = (R - r) * Math.cos(t + th) + d * Math.cos((R - r) / r * (t + th));
+        const y = (R - r) * Math.sin(t + th) - d * Math.sin((R - r) / r * (t + th));
+        if (i === 0) ctx.moveTo(cx + x, cy + y); else ctx.lineTo(cx + x, cy + y);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /* tick collar for the round rail controls — the ring lights when engaged */
+  function collar(size, ticks) {
+    const S = size, cx = S / 2, r = cx - 1.5;
+    const svg = el('svg', { width: S, height: S, viewBox: '0 0 ' + S + ' ' + S, class: 'collar' });
+    const g2 = el('g', {});
+    const N = ticks || 32;
+    for (let i = 0; i < N; i++) {
+      const a2 = i * 360 / N;
+      const major = i % 4 === 0;
+      const p0 = polar(cx, cx, r, a2), p1 = polar(cx, cx, r - (major ? 4 : 2.4), a2);
+      g2.appendChild(el('line', {
+        class: 'tk', x1: p0[0].toFixed(2), y1: p0[1].toFixed(2),
+        x2: p1[0].toFixed(2), y2: p1[1].toFixed(2)
+      }));
+    }
+    svg.appendChild(g2);
+    svg.appendChild(el('circle', { class: 'c-ring', cx: cx, cy: cx, r: (r - 6).toFixed(2) }));
+    return svg;
+  }
+
+  g.AM.collar = collar;
   g.AM.Knob = Knob;
+  g.AM.rosette = rosette;
 })(window);

@@ -276,8 +276,8 @@
   /* the play button, the source name and the state chip in the top capsule */
   function paintTransport() {
     const b = $('#btnPlay');
-    b.classList.toggle('playing', S.playing);
-    b.setAttribute('aria-label', S.playing ? '暫停' : '播放');
+    b.innerHTML = S.playing ? 'PAUSE<small>暫停</small>' : 'PLAY<small>播放</small>';
+    b.dataset.live = S.playing ? 'true' : 'false';
     $('#srcName').textContent = S.fileName;
     if (recorder && recorder.recording()) return;   // the rec clock owns the chip
     const st = $('#statusText');
@@ -315,21 +315,32 @@
     if (tlCv.width !== w || tlCv.height !== h) { tlCv.width = w; tlCv.height = h; }
     const c = tlx;
     c.clearRect(0, 0, w, h);
-    const mid = Math.round(h / 2), R = 6 * dpr, x0 = R, x1 = w - R;
-    c.lineCap = 'round';
+    const mid = Math.round(h * 0.62);
 
-    // track
-    c.strokeStyle = AM.hair(.16); c.lineWidth = 4 * dpr;
-    c.beginPath(); c.moveTo(x0, mid); c.lineTo(x1, mid); c.stroke();
+    // baseline + measured ticks
+    c.strokeStyle = AM.hair(.42); c.lineWidth = 1;
+    c.beginPath(); c.moveTo(0, mid + .5); c.lineTo(w, mid + .5); c.stroke();
+    const N = 40;
+    for (let i = 0; i <= N; i++) {
+      const x = Math.round(w * i / N) + .5;
+      const major = i % 5 === 0;
+      c.strokeStyle = major ? AM.hair(.5) : AM.hair(.22);
+      c.beginPath(); c.moveTo(x, mid); c.lineTo(x, mid - (major ? 9 : 5) * dpr); c.stroke();
+    }
     if (!video.duration || isCam()) return;
 
-    // elapsed + playhead knob
-    const px = x0 + (video.currentTime / video.duration) * (x1 - x0);
-    c.strokeStyle = AM.INK; c.lineWidth = 4 * dpr;
-    c.beginPath(); c.moveTo(x0, mid); c.lineTo(Math.max(x0 + .1, px), mid); c.stroke();
-    c.fillStyle = AM.PAPER;
-    c.strokeStyle = AM.INK; c.lineWidth = 1.5 * dpr;
-    c.beginPath(); c.arc(px, mid, R - dpr, 0, 6.2832); c.fill(); c.stroke();
+    // elapsed as riso tally bars
+    const t = video.currentTime / video.duration;
+    const px = t * w;
+    c.fillStyle = AM.RISO;
+    for (let x = 0; x < px; x += 5 * dpr) c.fillRect(x, mid - 4 * dpr, 2 * dpr, 4 * dpr);
+
+    // playhead
+    c.fillStyle = AM.INK;
+    c.beginPath();
+    c.moveTo(px, mid - 12 * dpr); c.lineTo(px + 4 * dpr, mid - 18 * dpr);
+    c.lineTo(px - 4 * dpr, mid - 18 * dpr); c.closePath(); c.fill();
+    c.fillRect(px - .5 * dpr, mid - 12 * dpr, dpr, 12 * dpr);
   }
 
   function fmt(t) {
@@ -345,7 +356,7 @@
     $('#btnTheme').dataset.on = S.theme === 'dark' ? 'true' : 'false';
     // every drawn surface carries the ground with it
     if (spectro) { spectro.clear(); }
-    if (!hasSource()) paintAmbientIdle();
+    drawOrnaments();
     requestAnimationFrame(function () { sizeCanvases(); computeRect(); resizePlate(); });
     if (!quiet) toast((S.theme === 'dark' ? '深色' : '淺色') + ' — 圖版已重新鋪底');
   }
@@ -496,39 +507,71 @@
   ];
   const FX_NAMES = { REV: '殘響', DLY: '延遲', LPF: '低通', BIT: '位元破壞', SUB: '低八度' };
 
-  function chip(label, sub, title) {
+  /* one option = the original glyph (diamond or ringed dial) + its plain name */
+  function opt(glyph, name, title, hint) {
     const b = document.createElement('button');
-    b.className = 'chip';
+    b.className = 'opt';
     b.setAttribute('aria-pressed', 'false');
-    b.innerHTML = '<span></span>' + (sub ? '<small></small>' : '');
-    b.firstChild.textContent = label;
-    if (sub) b.lastChild.textContent = sub;
+    b.appendChild(glyph);
+    const cap = document.createElement('span');
+    cap.className = 'opt-cap';
+    if (hint) {
+      const n = document.createElement('b'); n.textContent = name;
+      const h = document.createElement('small'); h.textContent = hint;
+      cap.appendChild(n); cap.appendChild(h);
+    } else cap.textContent = name;
+    b.appendChild(cap);
     if (title) b.title = title;
     return b;
+  }
+  function dia(code) {
+    const d = document.createElement('span');
+    d.className = 'dia';
+    const t = document.createElement('span'); t.textContent = code;
+    d.appendChild(t);
+    return d;
+  }
+  function cir(code, ticks, rose) {
+    const c = document.createElement('span');
+    c.className = 'cir';
+    if (rose) {
+      const sp = document.createElement('canvas');
+      sp.className = 'spiro'; sp.width = 72; sp.height = 72;
+      AM.rosette(sp.getContext('2d'), 36, 36, 30, {
+        petals: rose[0], r: rose[1], d: rose[2], alpha: .5, lineWidth: .5, color: AM.INK
+      });
+      c.appendChild(sp);
+    }
+    const t = document.createElement('b'); t.textContent = code;
+    c.appendChild(t);
+    c.appendChild(AM.collar(46, ticks));
+    return c;
   }
 
   function buildRails() {
     AM.SCALE_KEYS.forEach(function (k) {
-      const b = chip(SCALE_NAMES[k] || k, null, '音階：' + (SCALE_NAMES[k] || k));
+      const b = opt(dia(AM.SCALES[k].label), SCALE_NAMES[k] || k, '音階：' + (SCALE_NAMES[k] || k));
       b.dataset.k = k;
       b.addEventListener('click', function () { S.scale = k; paintRails(); updateStatus(); });
       $('#railScale').appendChild(b);
     });
     AM.QUANT.forEach(function (q, i) {
-      const b = chip(QUANT_NAMES[q.label] || q.label, null,
+      const b = opt(dia(q.label), QUANT_NAMES[q.label] || q.label,
         q.beats ? '觸發會對齊到 BPM 的 ' + (QUANT_NAMES[q.label] || q.label) + ' 格線' : '觸發立刻發聲，不對齊節拍');
       b.dataset.i = i;
       b.addEventListener('click', function () { S.quantIdx = i; paintRails(); updateStatus(); });
       $('#railQuant').appendChild(b);
     });
-    VOICES.forEach(function (v) {
-      const b = chip(v.name, v.hint, v.name + '（快捷鍵 ' + v.key + '）');
+    VOICES.forEach(function (v, i) {
+      const b = opt(cir(v.k.slice(0, 3), 32, [[13, 11, 9], [17, 13, 7], [9, 19, 12]][i]), v.name,
+        v.name + '（快捷鍵 ' + v.key + '）', v.hint);
+      b.classList.add('voice');
       b.dataset.v = v.k;
       b.addEventListener('click', function () { S.voice = v.k; engine.setVoice(v.k); paintRails(); });
       $('#railVoice').appendChild(b);
     });
     ['REV', 'DLY', 'LPF', 'BIT', 'SUB'].forEach(function (k) {
-      const b = chip(FX_NAMES[k], null, '效果：' + FX_NAMES[k]);
+      const b = opt(cir(k, 24, null), FX_NAMES[k], '效果：' + FX_NAMES[k]);
       b.dataset.f = k;
       b.addEventListener('click', function () { engine.init(); engine.toggleFx(k); paintRails(); });
       $('#railFx').appendChild(b);
@@ -537,18 +580,25 @@
   }
 
   function paintRails() {
-    const mark = function (b, on) {
+    const mark = function (b, on, led) {
       b.classList.toggle('on', on);
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.style.setProperty('--led', led);
     };
-    document.querySelectorAll('#railScale .chip').forEach(function (b) { mark(b, b.dataset.k === S.scale); });
-    document.querySelectorAll('#railQuant .chip').forEach(function (b) { mark(b, +b.dataset.i === S.quantIdx); });
-    document.querySelectorAll('#railVoice .chip').forEach(function (b, i) {
-      b.style.setProperty('--led', P[[7, 5, 0][i]]);
-      mark(b, b.dataset.v === S.voice);
-    });
-    document.querySelectorAll('#railFx .chip').forEach(function (b) { mark(b, !!engine.fx[b.dataset.f]); });
+    document.querySelectorAll('#railScale .opt').forEach(function (b, i) { mark(b, b.dataset.k === S.scale, P[(i + 3) % P.length]); });
+    document.querySelectorAll('#railQuant .opt').forEach(function (b, i) { mark(b, +b.dataset.i === S.quantIdx, P[i % P.length]); });
+    document.querySelectorAll('#railVoice .opt').forEach(function (b, i) { mark(b, b.dataset.v === S.voice, P[[7, 5, 0][i]]); });
+    document.querySelectorAll('#railFx .opt').forEach(function (b, i) { mark(b, !!engine.fx[b.dataset.f], P[(i + 2) % P.length]); });
   }
+
+  /* momentary buttons blink their LED so a press reads as an event */
+  document.querySelectorAll('.sq-btn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (b.dataset.on !== undefined) return;   // latching buttons show state instead
+      b.classList.remove('fired'); void b.offsetWidth; b.classList.add('fired');
+      setTimeout(function () { b.classList.remove('fired'); }, 170);
+    });
+  });
 
   /* preset stepper — a selector, not a dropdown */
   const PRESET_NAMES = { default: '標準', rain: '細雨', glass: '玻璃', broken: '碎裂' };
@@ -915,7 +965,7 @@
     spectro.stamp(stampEv, engine.ready ? engine.getSpectrum() : null);
 
     if (ok) {
-      const c = document.querySelector('#railVoice .chip[data-v="' + S.voice + '"]');
+      const c = document.querySelector('#railVoice .opt[data-v="' + S.voice + '"] .cir');
       if (c) { c.classList.remove('pulse'); void c.offsetWidth; c.classList.add('pulse'); }
     }
   }
@@ -1072,28 +1122,6 @@
     c.restore();
   }
 
-  /* ---------------- ambient ground ----------------
-     the video, shrunk to 48x27 and blurred by CSS, fills the window behind the
-     glass. With nothing loaded it holds a soft wash of the palette instead. */
-  const amb = $('#ambient'), ambx = amb.getContext('2d');
-  let ambFrame = 0;
-  function paintAmbient() {
-    if (++ambFrame % 6) return;
-    drawSource(ambx, 0, 0, amb.width, amb.height);
-  }
-  function paintAmbientIdle() {
-    const W = amb.width, H = amb.height;
-    ambx.fillStyle = AM.THEME === 'dark' ? '#0b0d10' : '#e4e8ee';
-    ambx.fillRect(0, 0, W, H);
-    [['#3f86bd', .18, .30], ['#a9509b', .80, .25], ['#e5a33c', .62, .85], ['#3fa06a', .22, .88]]
-      .forEach(function (b) {
-        const gr = ambx.createRadialGradient(b[1] * W, b[2] * H, 0, b[1] * W, b[2] * H, W * .42);
-        gr.addColorStop(0, hexA(b[0], AM.THEME === 'dark' ? .55 : .5));
-        gr.addColorStop(1, hexA(b[0], 0));
-        ambx.fillStyle = gr; ambx.fillRect(0, 0, W, H);
-      });
-  }
-
   /* ---------------- loop ---------------- */
   let lastFoot = 0;
   function loop(ts) {
@@ -1101,10 +1129,9 @@
 
     if (video.readyState >= 2) {
       computeRect();
-      // letterbox stays clear so the ambient ground shows through
-      sctx.clearRect(0, 0, stage.width, stage.height);
+      sctx.fillStyle = AM.STAGE_BG;
+      sctx.fillRect(0, 0, stage.width, stage.height);
       drawSource(sctx, vrect.x, vrect.y, vrect.w, vrect.h);
-      paintAmbient();
 
       if (aw) {
         drawSource(actx, 0, 0, aw, ah);
@@ -1138,9 +1165,10 @@
   function updateStatus() {
     const d = $('#audioDot');
     const st = audioState();
-    d.dataset.s = st.k;
+    d.textContent = 'AUD ' + { live: 'LIVE', armed: 'ARMED', off: 'OFF' }[st.k];
+    d.classList.toggle('live', st.k === 'live');
+    d.classList.toggle('warn', st.k !== 'live');
     d.title = '音訊：' + st.t;
-    d.setAttribute('aria-label', '音訊：' + st.t);
   }
 
   function audioState() {
@@ -1464,10 +1492,40 @@
     buildIO();
     restoreState();
     paintLineUI();
+    drawOrnaments();
     paintTransport();
     updateStatus();
     requestAnimationFrame(loop);
   }
+  /* printed ornaments: the survey target on the loader */
+  function drawOrnaments() {
+    const dz = $('#dzMark');
+    if (dz) {
+      // survey target: crosshair, graduated ring, corner brackets
+      const c = dz.getContext('2d'), M = 74;
+      c.clearRect(0, 0, 148, 148);
+      c.strokeStyle = AM.hair(.5); c.lineWidth = 1;
+      c.beginPath(); c.arc(M, M, 48, 0, 6.2832); c.stroke();
+      c.strokeStyle = AM.hair(.28);
+      c.beginPath(); c.arc(M, M, 62, 0, 6.2832); c.stroke();
+      for (let i = 0; i < 48; i++) {
+        const a = i * Math.PI / 24, big = i % 4 === 0;
+        c.strokeStyle = big ? AM.hair(.55) : AM.hair(.25);
+        c.beginPath();
+        c.moveTo(M + Math.cos(a) * 62, M + Math.sin(a) * 62);
+        c.lineTo(M + Math.cos(a) * (62 - (big ? 9 : 5)), M + Math.sin(a) * (62 - (big ? 9 : 5)));
+        c.stroke();
+      }
+      c.strokeStyle = hexA(AM.RISO, .85); c.lineWidth = 1;
+      c.beginPath(); c.moveTo(M - 30, M); c.lineTo(M - 8, M);
+      c.moveTo(M + 8, M); c.lineTo(M + 30, M);
+      c.moveTo(M, M - 30); c.lineTo(M, M - 8);
+      c.moveTo(M, M + 8); c.lineTo(M, M + 30); c.stroke();
+      c.fillStyle = hexA(AM.RISO, .9);
+      c.fillRect(M - 2, M - 2, 4, 4);
+    }
+  }
+
   boot();
 
   g.AMESEN = {
