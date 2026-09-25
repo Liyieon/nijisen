@@ -276,8 +276,9 @@
   /* the play button, the source name and the state chip in the top capsule */
   function paintTransport() {
     const b = $('#btnPlay');
-    b.innerHTML = S.playing ? 'PAUSE<small>暫停</small>' : 'PLAY<small>播放</small>';
+    b.classList.toggle('playing', S.playing);
     b.dataset.live = S.playing ? 'true' : 'false';
+    b.setAttribute('aria-label', S.playing ? '暫停' : '播放');
     $('#srcName').textContent = S.fileName;
     if (recorder && recorder.recording()) return;   // the rec clock owns the chip
     const st = $('#statusText');
@@ -592,7 +593,7 @@
   }
 
   /* momentary buttons blink their LED so a press reads as an event */
-  document.querySelectorAll('.sq-btn').forEach(function (b) {
+  document.querySelectorAll('.sq-btn, .ib').forEach(function (b) {
     b.addEventListener('click', function () {
       if (b.dataset.on !== undefined) return;   // latching buttons show state instead
       b.classList.remove('fired'); void b.offsetWidth; b.classList.add('fired');
@@ -785,7 +786,7 @@
   $('#btnPower').addEventListener('click', function () {
     S.engineOn = !S.engineOn;
     this.dataset.on = S.engineOn ? 'true' : 'false';
-    this.textContent = S.engineOn ? '音訊開' : '音訊關';
+    this.title = S.engineOn ? '音訊：開（關掉時只印圖不發聲）' : '音訊：關（只印圖不發聲）';
     if (S.engineOn) { ensureAudio(); toast('音訊開啟'); }
     else { toast('音訊關閉 — 只印圖不發聲'); }
     updateStatus();

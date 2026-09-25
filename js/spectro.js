@@ -50,10 +50,11 @@
       else { c.moveTo(0, p + .5); c.lineTo(W, p + .5); }
       c.stroke();
     };
-    c.strokeStyle = AM.grain(.075); c.lineWidth = 1;
-    for (let y = 0; y < gLen; y += 5) gline(y);
-    c.strokeStyle = AM.grain(.10);
-    for (let y = 0; y < gLen; y += 41) gline(y);
+    // broad and faint: soft laid lines, wider chain lines
+    c.strokeStyle = AM.grain(.028); c.lineWidth = 4;
+    for (let y = 0; y < gLen; y += 11) gline(y);
+    c.strokeStyle = AM.grain(.034); c.lineWidth = 8;
+    for (let y = 0; y < gLen; y += 66) gline(y);
 
     // scattered square field
     for (let i = 0; i < 140; i++) {

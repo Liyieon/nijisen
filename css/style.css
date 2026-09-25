@@ -84,11 +84,12 @@ body[data-theme="dark"]{
 }
 body[data-theme="dark"]{
   background-image:
-    repeating-linear-gradient(0deg, rgba(150,175,200,.045) 0 1px, rgba(0,0,0,0) 1px 5px),
-    repeating-linear-gradient(0deg, rgba(150,175,200,.030) 0 1px, rgba(0,0,0,0) 1px 13px),
-    repeating-linear-gradient(0deg, rgba(150,175,200,.055) 0 1px, rgba(0,0,0,0) 1px 41px);
+    repeating-linear-gradient(0deg,
+      rgba(150,175,200,0) 0, rgba(150,175,200,.016) 2px, rgba(150,175,200,.016) 4px, rgba(150,175,200,0) 6px, rgba(150,175,200,0) 11px),
+    repeating-linear-gradient(0deg,
+      rgba(150,175,200,0) 0, rgba(150,175,200,.022) 4px, rgba(150,175,200,.022) 8px, rgba(150,175,200,0) 12px, rgba(150,175,200,0) 66px);
 }
-body[data-theme="dark"]::before{opacity:.10;mix-blend-mode:screen}
+body[data-theme="dark"]::before{opacity:.05;mix-blend-mode:screen}
 /* filled states invert: light plate, dark glyph */
 body[data-theme="dark"] .cir .collar .tk{stroke:var(--hair)}
 body[data-theme="dark"] .opt.on .cir .collar .tk{stroke:rgba(18,22,27,.45)}
@@ -99,15 +100,13 @@ body[data-theme="dark"] .pop{box-shadow:6px 6px 0 rgba(0,0,0,.55)}
 html,body{height:100%}
 
 body{
-  /* 和紙: horizontal laid grain + wider chain lines, both very low contrast */
+  /* 和紙: soft laid lines and wider chain lines, broad but barely there */
   background-color:var(--washi);
   background-image:
     repeating-linear-gradient(0deg,
-      rgba(70,88,110,.045) 0 1px, rgba(0,0,0,0) 1px 5px),
+      rgba(70,88,110,0) 0, rgba(70,88,110,.020) 2px, rgba(70,88,110,.020) 4px, rgba(70,88,110,0) 6px, rgba(70,88,110,0) 11px),
     repeating-linear-gradient(0deg,
-      rgba(70,88,110,.030) 0 1px, rgba(0,0,0,0) 1px 13px),
-    repeating-linear-gradient(0deg,
-      rgba(70,88,110,.055) 0 1px, rgba(0,0,0,0) 1px 41px);
+      rgba(70,88,110,0) 0, rgba(70,88,110,.026) 4px, rgba(70,88,110,.026) 8px, rgba(70,88,110,0) 12px, rgba(70,88,110,0) 66px);
   color:var(--ink);
   font-family:var(--mono);
   font-size:12px;
@@ -126,8 +125,8 @@ body{
 /* fibre speck over the grain */
 body::before{
   content:"";position:fixed;inset:0;pointer-events:none;z-index:998;
-  opacity:.16;mix-blend-mode:multiply;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23f)' opacity='0.4'/%3E%3C/svg%3E");
+  opacity:.07;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23f)' opacity='0.4'/%3E%3C/svg%3E");
   background-size:180px 180px;
 }
 button{font-family:var(--mono)}
@@ -174,6 +173,58 @@ button{font-family:var(--mono)}
 .sq-btn.fired::before{background:var(--led);border-color:var(--led)}
 
 /* ============================================================
+   ICON CELL — same notched cell and LED, a drawn glyph instead of words.
+   The name is in the tooltip and the accessible label.
+   ============================================================ */
+.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:square;stroke-linejoin:miter;flex:0 0 auto}
+.ic .t{stroke-width:1.1}
+.ic .w{stroke-width:3}
+.ic .f{fill:currentColor;stroke:none}
+.ic .f2{fill:currentColor;fill-opacity:.35}
+.ib{
+  --led:var(--ink);
+  position:relative;width:36px;height:34px;flex:0 0 auto;
+  display:grid;place-items:center;
+  border:1px solid var(--rule);background:transparent;color:var(--ink);cursor:pointer;
+  transition:background .09s,color .09s;
+  clip-path:polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 7px 100%, 0 calc(100% - 7px));
+}
+.ib::before{
+  content:"";position:absolute;left:4px;top:4px;width:4px;height:4px;
+  border:1px solid currentColor;opacity:.55;transition:background .09s;
+}
+.ib::after{
+  content:attr(data-idx);position:absolute;right:5px;bottom:2px;
+  font-size:7px;font-weight:500;letter-spacing:.04em;opacity:.5;line-height:1;
+}
+.ib:hover{background:var(--washi-3)}
+.ib[data-on="true"]{background:var(--ink);color:var(--washi)}
+.ib[data-on="true"]::before,.ib[data-live="true"]::before,.ib.fired::before{background:var(--led);border-color:var(--led);opacity:1}
+.ib.led-green{--led:var(--green)}
+.ib.led-amber{--led:var(--amber)}
+.ib.led-riso{--led:var(--riso)}
+.ib.led-red{--led:var(--red)}
+.ib.big{width:48px;height:36px}
+.ib.big .ic{width:22px;height:22px}
+.ib.sm{width:30px;height:28px}
+.ib.sm .ic{width:17px;height:17px}
+.ib.sm::before{left:3px;top:3px;width:3px;height:3px}
+#btnPlay .i-pause{display:none}
+#btnPlay.playing .i-play{display:none}
+#btnPlay.playing .i-pause{display:block}
+#btnPower .i-off{display:none}
+#btnPower[data-on="false"] .i-on{display:none}
+#btnPower[data-on="false"] .i-off{display:block}
+.sq-btn .ic{width:16px;height:16px;vertical-align:-4px;margin:-2px 7px -2px 0}
+.seg.icons{gap:3px}
+.seg.icons button{padding:3px 6px;display:grid;place-items:center}
+.seg.icons button::before{display:none}
+.seg.icons .ic{width:18px;height:18px}
+#segLines button{display:flex;align-items:center;padding-left:9px}
+#segLines button::before{display:none}
+#segLines .ic{width:17px;height:17px}
+
+/* ============================================================
    STEPPER
    ============================================================ */
 .stepper{
@@ -206,7 +257,7 @@ button{font-family:var(--mono)}
 }
 .tb-title em{font-style:normal;font-weight:400;color:var(--ink-soft);letter-spacing:.04em}
 .tb-reads{display:flex;align-items:center;gap:8px;flex:1 1 auto;min-width:0}
-.tb-right{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex:0 0 auto}
+.tb-right{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:0 0 auto}
 .barcode{display:flex;align-items:flex-end;gap:2px;height:14px;margin-left:4px}
 .barcode i{display:block;width:2px;background:var(--ink)}
 .barcode i:nth-child(1){height:14px}
@@ -251,7 +302,7 @@ button{font-family:var(--mono)}
 .cell::before{
   content:"";position:absolute;left:7px;top:7px;width:5px;height:5px;border:1px solid currentColor;
 }
-.cell b{font-size:12px;font-weight:800;letter-spacing:.12em;margin-top:4px}
+.cell .ic{width:24px;height:24px;margin-top:5px}
 .cell span{font-size:11px;letter-spacing:.04em;color:var(--ink-soft)}
 .cell:hover{background:var(--washi-3)}
 .cell.on{background:var(--ink);color:var(--washi)}
@@ -316,7 +367,7 @@ body.is-live .tl-wrap,body.is-live #btnLoop{opacity:.4;pointer-events:none}
 .plate{grid-area:plate;display:flex;flex-direction:column;gap:7px;padding:4px 20px 14px;min-height:0;min-width:0}
 .sp-head{display:flex;align-items:center;justify-content:space-between;gap:8px 14px;flex-wrap:wrap}
 .sp-title{font-size:9.5px;letter-spacing:.16em;color:var(--ink-soft);white-space:nowrap}
-.sp-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sp-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 #specCanvas{flex:1 1 0;min-height:0;width:100%;display:block;border:1px solid var(--rule);background:var(--washi-2)}
 body.plate-off{grid-template-rows:auto minmax(0,1fr) auto 0}
 body.plate-off .plate{display:none}
@@ -455,7 +506,8 @@ body.plate-off .transport{padding-bottom:16px}
   width:400px;max-width:calc(100vw - 124px);max-height:calc(100dvh - 80px);overflow-y:auto;overscroll-behavior:contain;
   padding:14px 18px 16px;
   background-color:var(--washi);
-  background-image:repeating-linear-gradient(0deg, rgba(70,88,110,.04) 0 1px, rgba(0,0,0,0) 1px 5px);
+  background-image:repeating-linear-gradient(0deg,
+    rgba(70,88,110,0) 0, rgba(70,88,110,.018) 2px, rgba(70,88,110,.018) 4px, rgba(70,88,110,0) 6px, rgba(70,88,110,0) 11px);
   border:1px solid var(--rule);
   box-shadow:6px 6px 0 var(--hair-2);
 }
@@ -605,7 +657,7 @@ body.stage-only .toast{top:18px}
   }
   .dock::before,.jp-label{display:none}
   .cell{flex:1 1 0;width:auto;padding:7px 0 6px}
-  .cell b{font-size:11px;margin-top:2px}
+  .cell .ic{width:21px;height:21px;margin-top:2px}
   .cell span{font-size:10.5px}
 
   .viewport{margin:10px 10px 0}
