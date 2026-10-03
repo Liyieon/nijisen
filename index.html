@@ -2,35 +2,70 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>虹線 NIJISEN — Video Threshold Sequencer</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 fill=%22%23F0F0F0%22/%3E%3Cpath d=%22M3 17h26%22 stroke=%22%2314181d%22 stroke-width=%221.6%22/%3E%3Cpath d=%22M8 17v-5M13 17v-8M18 17v-4M23 17v-6%22 stroke=%22%233f6fa8%22 stroke-width=%222.6%22/%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body data-theme="light" data-layout="landscape">
+<!-- icon set: square caps, mitred joins, like a technical drawing -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-src" viewBox="0 0 20 20"><rect x="2" y="5" width="11" height="10"/><path d="m13 8.5 5-2.5v8l-5-2.5"/></symbol>
+  <symbol id="i-line" viewBox="0 0 20 20"><path d="M1.5 10h17"/><path d="M5 7v6M9 8.5v3M13 6v8M16.5 8.5v3" class="t"/></symbol>
+  <symbol id="i-snd" viewBox="0 0 20 20"><path d="M1.5 10h2.5l2-5.5 3 11 3-8 2 4.5 1.5-2h3"/></symbol>
+  <symbol id="i-col" viewBox="0 0 20 20"><circle cx="7.5" cy="8" r="4.5"/><circle cx="12.5" cy="8" r="4.5"/><circle cx="10" cy="12.5" r="4.5"/></symbol>
+  <symbol id="i-io" viewBox="0 0 20 20"><path d="M10 12V2.5M6.5 6 10 2.5 13.5 6"/><path d="M3.5 10v7h13v-7"/></symbol>
+  <symbol id="i-play" viewBox="0 0 20 20"><path d="M6 4v12l10-6z" class="f"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 20 20"><path d="M7 4v12M13 4v12"/></symbol>
+  <symbol id="i-loop" viewBox="0 0 20 20"><path d="M3 9V6h12M12.5 3.5 15 6l-2.5 2.5"/><path d="M17 11v3H5M7.5 16.5 5 14l2.5-2.5"/></symbol>
+  <symbol id="i-plate" viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12"/><path d="M5 13v-2M8 13V8M11 13v-3M14 13V7" class="t"/></symbol>
+  <symbol id="i-rec" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7"/><circle cx="10" cy="10" r="3.5" class="f"/></symbol>
+  <symbol id="i-dice" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14"/><rect x="6" y="6" width="1.6" height="1.6" class="f"/><rect x="12.4" y="12.4" width="1.6" height="1.6" class="f"/><rect x="9.2" y="9.2" width="1.6" height="1.6" class="f"/></symbol>
+  <symbol id="i-theme" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7"/><path d="M10 3a7 7 0 0 1 0 14z" class="f"/></symbol>
+  <symbol id="i-stage" viewBox="0 0 20 20"><path d="M2.5 7V2.5H7M13 2.5h4.5V7M2.5 13v4.5H7M13 17.5h4.5V13"/></symbol>
+  <symbol id="i-x" viewBox="0 0 20 20"><path d="m5 5 10 10M15 5 5 15"/></symbol>
+  <symbol id="i-test" viewBox="0 0 20 20"><path d="M3 7.5h3l4-3.5v12l-4-3.5H3z"/><path d="M13 7a4 4 0 0 1 0 6M15.5 4.5a7.5 7.5 0 0 1 0 11" class="t"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 20 20"><path d="M3 7.5h3l4-3.5v12l-4-3.5H3z"/><path d="m13 7.5 5 5M18 7.5l-5 5" class="t"/></symbol>
+  <symbol id="i-scroll" viewBox="0 0 20 20"><path d="M3 14v-3M6 14V8M9 14v-5" class="t"/><path d="M11.5 10h6M15 7.5l2.5 2.5-2.5 2.5"/></symbol>
+  <symbol id="i-stack" viewBox="0 0 20 20"><path d="M3 16h14"/><rect x="5" y="9" width="3" height="7"/><rect x="8.5" y="5" width="3" height="11" class="f2"/><rect x="12" y="11" width="3" height="5"/></symbol>
+  <symbol id="i-ring" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7"/><path d="M10 3v3M17 10h-3M10 17v-3M3 10h3M15 5l-2 2M5 15l2-2" class="t"/></symbol>
+  <symbol id="i-auto" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14"/><path d="m6.5 13.5 3.5-8 3.5 8M8 10.5h4"/></symbol>
+  <symbol id="i-land" viewBox="0 0 20 20"><rect x="2" y="3" width="16" height="9"/><path d="M2 15.5h16" class="w"/></symbol>
+  <symbol id="i-port" viewBox="0 0 20 20"><rect x="3" y="2" width="9" height="16"/><path d="M15.5 2v16" class="w"/></symbol>
+  <symbol id="i-clear" viewBox="0 0 20 20"><path d="M3.5 5.5h13M8 5.5V3h4v2.5M5 5.5l1 11.5h8l1-11.5"/></symbol>
+  <symbol id="i-png" viewBox="0 0 20 20"><path d="M10 3v9M6.5 8.5 10 12l3.5-3.5"/><path d="M3.5 14v3h13v-3"/></symbol>
+  <symbol id="i-addh" viewBox="0 0 20 20"><path d="M1.5 12h12"/><path d="M16 3v6M13 6h6" class="t"/></symbol>
+  <symbol id="i-addv" viewBox="0 0 20 20"><path d="M8 5v13.5"/><path d="M16 3v6M13 6h6" class="t"/></symbol>
+  <symbol id="i-del" viewBox="0 0 20 20"><path d="M1.5 12h10" class="t"/><path d="m13.5 8.5 5 5M18.5 8.5l-5 5"/></symbol>
+  <symbol id="i-file" viewBox="0 0 20 20"><path d="M4 2.5h8l4 4v11H4z"/><path d="M12 2.5v4h4M8 10v5l4-2.5z" class="t"/></symbol>
+  <symbol id="i-cam" viewBox="0 0 20 20"><path d="M2.5 6h3l1.5-2h6l1.5 2h3v10h-15z"/><circle cx="10" cy="11" r="3"/></symbol>
+  <symbol id="i-link" viewBox="0 0 20 20"><path d="M8.5 11.5 11.5 8.5M7 9l-2.5 2.5a2.5 2.5 0 0 0 3.5 3.5L10.5 12.5M13 11l2.5-2.5A2.5 2.5 0 0 0 12 5L9.5 7.5"/></symbol>
+  <symbol id="i-save" viewBox="0 0 20 20"><path d="M3 3h11l3 3v11H3z"/><path d="M6 3v5h7V3M6 17v-5h8v5" class="t"/></symbol>
+  <symbol id="i-load" viewBox="0 0 20 20"><path d="M2.5 16V4h5l2 2h8v10z"/><path d="M10 14V9M7.5 11 10 8.5l2.5 2.5" class="t"/></symbol>
+  <symbol id="i-reset" viewBox="0 0 20 20"><path d="M4 10a6 6 0 1 0 2-4.5"/><path d="M3.5 2.5V6H7"/></symbol>
+  <symbol id="i-panic" viewBox="0 0 20 20"><path d="M7 2.5h6l4.5 4.5v6L13 17.5H7L2.5 13V7z"/><path d="M7 10h6"/></symbol>
+</svg>
+
 
 <!-- ============ TOP BAR ============ -->
 <header class="topbar">
-  <div class="tb-left">
-    <button class="sq-btn led-green" id="btnPower" data-on="true" data-idx="01">AUDIO</button>
-    <button class="sq-btn led-red"   id="btnClear"    data-idx="02">CLR</button>
-    <button class="sq-btn led-amber" id="btnRandom"   data-idx="03">RND</button>
-    <button class="sq-btn led-green" id="btnExport"   data-idx="04">IMG</button>
-    <button class="sq-btn led-riso"  id="btnSrcAudio" data-on="false" data-idx="05">SRC</button>
-    <button class="sq-btn led-riso"  id="btnTest"     data-idx="06">TEST</button>
-    <button class="sq-btn led-riso"  id="btnStage"    data-idx="10">STAGE</button>
-    <button class="sq-btn led-red"   id="btnRec"      data-on="false" data-idx="11">REC</button>
-    <button class="sq-btn led-riso"  id="btnIO"       data-on="false" data-idx="12">I/O</button>
-
-    <div class="stepper" id="presetStep">
-      <button class="st-arrow" data-d="-1">&#9664;</button>
+  <h1 class="tb-title">虹線 NIJISEN <em>/ 01 — video threshold sound engine</em></h1>
+  <div class="tb-reads">
+    <span class="hud-read" id="statusText">待機</span>
+    <span class="hud-read" id="audioDot" title="音訊狀態">AUD —</span>
+    <span class="src-read" id="srcName">還沒有畫面</span>
+  </div>
+  <div class="tb-right">
+    <div class="stepper" id="presetStep" title="預設組合：一次換掉偵測、音高與音色">
+      <button class="st-arrow" data-d="-1" aria-label="上一個預設" title="上一個預設">&#9664;</button>
       <div class="st-body">
         <div>
-          <div class="st-label">PRESET</div>
-          <div class="st-val" id="presetVal">DEFAULT</div>
+          <div class="st-label">PRESET 預設</div>
+          <div class="st-val" id="presetVal">標準</div>
         </div>
-        <div class="st-pips" id="presetPips"></div>
+        <div class="st-pips" id="presetPips" aria-hidden="true"></div>
       </div>
-      <button class="st-arrow" data-d="1">&#9654;</button>
+      <button class="st-arrow" data-d="1" aria-label="下一個預設">&#9654;</button>
     </div>
     <select id="selPreset" hidden>
       <option value="default">default</option>
@@ -38,163 +73,292 @@
       <option value="glass">glass</option>
       <option value="broken">broken</option>
     </select>
-  </div>
-  <h1 class="tb-title">虹線 NIJISEN / 01 — video threshold sound engine</h1>
-  <div class="tb-right">
-    <div class="lay-pick">
-      <span class="lp-hd">THEME</span>
-      <div class="seg small" id="segTheme">
-        <button data-v="light" class="on">LIGHT</button>
-        <button data-v="dark">DARK</button>
-      </div>
-    </div>
-    <div class="lay-pick">
-      <span class="lp-hd">LAYOUT</span>
-      <div class="seg small" id="segLayout">
-        <button data-v="auto" class="on">AUTO</button>
-        <button data-v="landscape">LAND</button>
-        <button data-v="portrait">PORT</button>
-      </div>
-    </div>
-    <span class="barcode"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-    <span class="hud-read" id="statusText">idle</span>
+    <button class="ib led-amber" id="btnRandom" title="隨機換一組參數" aria-label="隨機參數"><svg class="ic" aria-hidden="true"><use href="#i-dice"/></svg></button>
+    <button class="ib led-riso" id="btnTheme" data-on="false" title="切換淺色／深色" aria-label="深色模式"><svg class="ic" aria-hidden="true"><use href="#i-theme"/></svg></button>
+    <button class="ib led-riso" id="btnStage" data-on="false" data-idx="F" title="演出模式：只留畫面（F）" aria-label="演出模式"><svg class="ic" aria-hidden="true"><use href="#i-stage"/></svg></button>
+    <span class="barcode" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
   </div>
 </header>
 
-<!-- ============ MAIN GRID ============ -->
-<main class="stage">
+<!-- ============ DOCK : one command cell per panel ============ -->
+<nav class="dock" aria-label="控制面板">
+  <button class="cell" data-pop="popSource" aria-expanded="false" aria-controls="popSource"><svg class="ic" aria-hidden="true"><use href="#i-src"/></svg><span>來源</span></button>
+  <button class="cell" data-pop="popLines" aria-expanded="false" aria-controls="popLines"><svg class="ic" aria-hidden="true"><use href="#i-line"/></svg><span>偵測線</span></button>
+  <button class="cell" data-pop="popSound" aria-expanded="false" aria-controls="popSound"><svg class="ic" aria-hidden="true"><use href="#i-snd"/></svg><span>聲音</span></button>
+  <button class="cell" data-pop="popColour" aria-expanded="false" aria-controls="popColour"><svg class="ic" aria-hidden="true"><use href="#i-col"/></svg><span>顏色</span></button>
+  <button class="cell" data-pop="popOutput" id="btnIO" aria-expanded="false" aria-controls="popOutput"><svg class="ic" aria-hidden="true"><use href="#i-io"/></svg><span>輸出</span></button>
+  <span class="jp-label" aria-hidden="true">觸れる線、鳴る色</span>
+</nav>
 
-  <aside class="rail rail-left">
-    <div class="rail-hd">SCL</div>
-    <div class="rail-group" id="railScale"></div>
-    <div class="rail-sep"></div>
-    <div class="rail-hd">QNT</div>
-    <div class="rail-group" id="railQuant"></div>
-    <canvas class="scatter" id="scatterL" width="92" height="240"></canvas>
-  </aside>
-
-  <section class="center">
-
-    <div class="viewport" id="viewport">
-      <canvas id="stageCanvas"></canvas>
-      <canvas id="overlayCanvas"></canvas>
-      <div class="dropzone" id="dropzone">
-        <div class="dz-inner">
-          <canvas class="dz-mark" id="dzMark" width="148" height="148"></canvas>
-          <div class="dz-txt">DROP VIDEO FILE&nbsp;&nbsp;/&nbsp;&nbsp;CLICK TO LOAD</div>
-          <div class="dz-sub">mp4 · webm · mov — 影片不會上傳，全部在本機運算</div>
-          <button class="sq-btn led-green dz-cam" id="dzCam">USE CAMERA</button>
-        </div>
-        <input type="file" id="fileInput" accept="video/*" hidden>
+<!-- ============ STAGE ============ -->
+<main class="viewport" id="viewport">
+  <canvas id="stageCanvas"></canvas>
+  <canvas id="overlayCanvas"></canvas>
+  <div class="dropzone" id="dropzone">
+    <div class="dz-inner">
+      <canvas class="dz-mark" id="dzMark" width="148" height="148"></canvas>
+      <div class="dz-txt">DROP VIDEO FILE&nbsp;&nbsp;/&nbsp;&nbsp;CLICK TO LOAD</div>
+      <div class="dz-sub">把影片拖進來，或點一下選檔 · mp4 / webm / mov · 影片不會上傳，全部在本機運算</div>
+      <div class="dz-actions">
+        <button class="sq-btn led-amber" id="dzFile"><svg class="ic" aria-hidden="true"><use href="#i-file"/></svg>選擇影片</button>
+        <button class="sq-btn led-green" id="dzCam"><svg class="ic" aria-hidden="true"><use href="#i-cam"/></svg>使用攝影機</button>
       </div>
-      <div class="vp-corner tl">THRESHOLD / TRIGGER FIELD</div>
-      <div class="vp-corner br"><span id="hudCells">16 cells</span></div>
+      <div class="dz-hint">載入後拖曳畫面上的白線；影像碰到線就會發出聲音</div>
     </div>
-
-    <!-- TRANSPORT -->
-    <div class="transport">
-      <button class="sq-btn wide led-green" id="btnPlay" data-idx="07">PLAY</button>
-      <button class="sq-btn wide led-riso" id="btnLoop" data-on="true" data-idx="08">LOOP</button>
-      <div class="tl-wrap" id="tlWrap"><canvas id="timeline"></canvas></div>
-      <div class="time-read"><span id="timeRead">0:00 <b>/</b> 0:00</span></div>
-      <button class="sq-btn wide led-amber" id="btnFile" data-idx="09">FILE</button>
-      <button class="sq-btn wide led-green" id="btnCam" data-idx="10" data-on="false">CAM</button>
-    </div>
-
-    <!-- CONSOLE : param bank + plate. display:contents in landscape,
-         a side column in portrait -->
-    <div class="console">
-
-    <!-- PARAM BANK -->
-    <div class="params panel">
-
-      <div class="pmod">
-        <div class="pmod-hd">[ DETECT ]</div>
-        <div class="seg" id="segMode">
-          <button data-v="motion" class="on">MOTION</button>
-          <button data-v="luma">LUMA</button>
-          <button data-v="edge">EDGE</button>
-        </div>
-        <div class="pmod-hd"><span>[ LINES ]</span></div>
-        <div class="seg" id="segLines">
-          <button data-v="add">+H</button>
-          <button data-v="vert">+V</button>
-          <button data-v="del">DEL SEL</button>
-        </div>
-        <div class="linepick">
-          <button class="lp-arrow" id="selPrev">&#9664;</button>
-          <span class="lp-read" id="selRead">--</span>
-          <button class="lp-arrow" id="selNext">&#9654;</button>
-        </div>
-      </div>
-
-      <div class="pdiv"></div>
-
-      <div class="pmod">
-        <div class="pmod-hd">[ FIELD / PITCH / CLOCK ]</div>
-        <div class="knobbank" id="knobBank"></div>
-      </div>
-
-      <div class="pdiv"></div>
-
-      <div class="pmod">
-        <div class="pmod-hd">[ SCAN COLOUR ]</div>
-        <div class="swatches" id="schemeSwatches"></div>
-        <div class="colrow">
-          <label class="colchip" id="colChip">
-            <input type="color" id="colCustom" value="#3f8296">
-          </label>
-          <div class="seg small" id="segColTarget">
-            <button data-v="all" class="on">ALL</button>
-            <button data-v="sel">SEL</button>
-          </div>
-          <button class="sq-btn tiny led-riso" id="btnColReset">RESET</button>
-        </div>
-      </div>
-
-      <div class="pdiv"></div>
-
-      <div class="pmod grow">
-        <div class="pmod-hd"><span>[ CELL ACTIVITY ]</span><span id="tallyRead">--</span></div>
-        <canvas id="tally" width="600" height="104"></canvas>
-      </div>
-
-    </div>
-
-    <!-- SPECTRUM PLATE -->
-    <div class="spectro-wrap">
-      <div class="sp-head">
-        <span class="sp-title">SPECTRUM PLATE — 觸線頻譜生成</span>
-        <div class="sp-tools">
-          <div class="seg small" id="segSpecMode">
-            <button data-v="scroll" class="on">SCROLL</button>
-            <button data-v="stack">STACK</button>
-            <button data-v="ring">RING</button>
-          </div>
-          <button class="sq-btn tiny led-red" id="btnSpecClear">CLR</button>
-          <button class="sq-btn tiny led-green" id="btnSpecSave">PNG</button>
-        </div>
-      </div>
-      <canvas id="specCanvas" width="1600" height="300"></canvas>
-    </div>
-
-    </div><!-- /console -->
-
-  </section>
-
-  <aside class="rail rail-right">
-    <div class="rail-hd">VCE</div>
-    <div class="rail-group" id="railVoice"></div>
-    <div class="rail-sep"></div>
-    <div class="rail-hd">FX</div>
-    <div class="rail-group" id="railFx"></div>
-    <div class="jp-label">觸れる線、鳴る色</div>
-  </aside>
-
+    <input type="file" id="fileInput" accept="video/*" hidden>
+  </div>
+  <div class="vp-corner tl">THRESHOLD / TRIGGER FIELD</div>
+  <div class="vp-corner br">拖曳白線調整位置</div>
 </main>
 
-<!-- ============ FOOTER ============ -->
-<footer class="statusbar" id="footBar"></footer>
+<!-- ============ TRANSPORT ============ -->
+<div class="transport">
+  <button class="ib big led-green" id="btnPlay" data-idx="SPC" title="播放／暫停（Space）" aria-label="播放"><svg class="ic i-play" aria-hidden="true"><use href="#i-play"/></svg><svg class="ic i-pause" aria-hidden="true"><use href="#i-pause"/></svg></button>
+  <button class="ib led-riso" id="btnLoop" data-on="true" title="重複播放" aria-label="重複播放"><svg class="ic" aria-hidden="true"><use href="#i-loop"/></svg></button>
+  <div class="tl-wrap" id="tlWrap" title="點一下或拖曳來跳轉"><canvas id="timeline"></canvas></div>
+  <div class="time-read" id="timeRead">0:00 / 0:00</div>
+  <button class="ib led-green" id="btnPlate" data-on="true" data-idx="P" title="顯示／收起頻譜圖版（P）" aria-label="頻譜圖版"><svg class="ic" aria-hidden="true"><use href="#i-plate"/></svg></button>
+  <button class="ib led-red" id="btnRec" data-on="false" data-idx="R" title="錄製（R）" aria-label="錄製"><svg class="ic" aria-hidden="true"><use href="#i-rec"/></svg></button>
+</div>
+
+<!-- ============ SPECTRUM PLATE ============ -->
+<section class="plate" id="plate" aria-label="頻譜圖版">
+  <div class="sp-head">
+    <span class="sp-title">SPECTRUM PLATE — 觸線頻譜生成</span>
+    <div class="sp-tools">
+      <div class="seg icons" id="segSpecMode" role="group" aria-label="圖版印法">
+        <button data-v="scroll" class="on" title="捲動：時間由左往右捲動" aria-label="捲動"><svg class="ic" aria-hidden="true"><use href="#i-scroll"/></svg></button>
+        <button data-v="stack" title="疊印：印在被碰到的那一格位置，反覆疊印" aria-label="疊印"><svg class="ic" aria-hidden="true"><use href="#i-stack"/></svg></button>
+        <button data-v="ring" title="環形：極座標，角度 = 線上的位置" aria-label="環形"><svg class="ic" aria-hidden="true"><use href="#i-ring"/></svg></button>
+      </div>
+      <div class="seg icons" id="segLayout" role="group" aria-label="版面">
+        <button data-v="auto" class="on" title="自動：依影片長寬比自動切換" aria-label="自動"><svg class="ic" aria-hidden="true"><use href="#i-auto"/></svg></button>
+        <button data-v="landscape" title="橫：圖版在下方" aria-label="橫"><svg class="ic" aria-hidden="true"><use href="#i-land"/></svg></button>
+        <button data-v="portrait" title="直：圖版在右側" aria-label="直"><svg class="ic" aria-hidden="true"><use href="#i-port"/></svg></button>
+      </div>
+      <button class="ib sm led-red" id="btnSpecClear" title="清除圖版" aria-label="清除圖版"><svg class="ic" aria-hidden="true"><use href="#i-clear"/></svg></button>
+      <button class="ib sm led-green" id="btnSpecSave" title="存成 PNG" aria-label="存成 PNG"><svg class="ic" aria-hidden="true"><use href="#i-png"/></svg></button>
+    </div>
+  </div>
+  <canvas id="specCanvas" width="1600" height="300"></canvas>
+</section>
+
+<!-- ============ POP-UP PANELS ============ -->
+
+<section class="pop" id="popSource" hidden aria-label="來源">
+  <header class="pop-hd">
+    <h2><b>[ SOURCE ]</b> 來源</h2>
+    <button class="ib sm led-red pop-x" title="關閉（Esc）" aria-label="關閉"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+  </header>
+  <div class="grp">
+    <div class="row">
+      <button class="sq-btn led-amber" id="ioFile"><svg class="ic" aria-hidden="true"><use href="#i-file"/></svg>選擇影片檔</button>
+      <button class="sq-btn led-green" id="ioCam" data-on="false">CAMERA<small>攝影機</small></button>
+    </div>
+    <div class="field">
+      <span class="f-lab">LENS<small>鏡頭</small></span>
+      <div class="linepick grow">
+        <button class="lp-arrow" id="camPrev" aria-label="上一個鏡頭">&#9664;</button>
+        <span class="lp-read" id="camRead">沒有攝影機</span>
+        <button class="lp-arrow" id="camNext" aria-label="下一個鏡頭">&#9654;</button>
+      </div>
+      <span class="dr-read" id="camStatus">關閉</span>
+    </div>
+    <div class="field">
+      <span class="f-lab">MIRROR<small>鏡像</small></span>
+      <div class="seg small" id="segCamMirror">
+        <button data-v="on" class="on">ON<small>左右翻轉</small></button>
+        <button data-v="off">OFF<small>原始方向</small></button>
+      </div>
+    </div>
+    <p class="note" id="camNote">攝影機畫面只留在這台電腦。鏡像開著時，你往右揮手，觸發點也往右跑。快捷鍵 C。</p>
+  </div>
+  <div class="grp">
+    <div class="field">
+      <span class="f-lab">SRC AUDIO<small>影片原聲</small></span>
+      <button class="sq-btn tiny led-riso" id="btnSrcAudio" data-on="false">關閉</button>
+    </div>
+  </div>
+</section>
+
+<section class="pop wide" id="popLines" hidden aria-label="偵測線">
+  <header class="pop-hd">
+    <h2><b>[ DETECT ]</b> 偵測線</h2>
+    <button class="ib sm led-red pop-x" title="關閉（Esc）" aria-label="關閉"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+  </header>
+  <div class="grp">
+    <div class="field">
+      <span class="f-lab">MODE<small>偵測什麼</small></span>
+      <div class="seg" id="segMode">
+        <button data-v="motion" class="on" title="前後兩幀的差異">MOTION<small>動態</small></button>
+        <button data-v="luma" title="亮度越過門檻">LUMA<small>亮度</small></button>
+        <button data-v="edge" title="邊緣穿越">EDGE<small>邊緣</small></button>
+      </div>
+    </div>
+    <div class="field">
+      <span class="f-lab">LINES<small>線</small></span>
+      <div class="seg" id="segLines">
+        <button data-v="add" title="加一條橫線" aria-label="加一條橫線"><svg class="ic" aria-hidden="true"><use href="#i-addh"/></svg><small>橫線</small></button>
+        <button data-v="vert" title="加一條直線" aria-label="加一條直線"><svg class="ic" aria-hidden="true"><use href="#i-addv"/></svg><small>直線</small></button>
+        <button data-v="del" title="刪除選取中的線（Delete）" aria-label="刪除選取的線"><svg class="ic" aria-hidden="true"><use href="#i-del"/></svg><small>刪除選取</small></button>
+      </div>
+    </div>
+    <div class="field">
+      <span class="f-lab">SELECT<small>選取</small></span>
+      <div class="linepick">
+        <button class="lp-arrow" id="selPrev" aria-label="上一條線">&#9664;</button>
+        <span class="lp-read" id="selRead">--</span>
+        <button class="lp-arrow" id="selNext" aria-label="下一條線">&#9654;</button>
+      </div>
+    </div>
+  </div>
+  <div class="grp">
+    <div class="pmod-hd">[ FIELD ] 觸發條件</div>
+    <div class="knobs" id="knobsDetect"></div>
+  </div>
+  <div class="grp">
+    <div class="pmod-hd split"><span>[ CELL ACTIVITY ] 每一格的活動量</span><span id="tallyRead">--</span></div>
+    <canvas id="tally" width="600" height="104"></canvas>
+    <p class="note">藍色計數條超過紅色虛線就會觸發；下緣的黑色方塊是剛剛觸發的格子。</p>
+  </div>
+</section>
+
+<section class="pop wide" id="popSound" hidden aria-label="聲音">
+  <header class="pop-hd">
+    <h2><b>[ SOUND ]</b> 聲音</h2>
+    <button class="ib sm led-riso" id="btnTest" title="試聽：用目前的音色試奏五個音" aria-label="試聽"><svg class="ic" aria-hidden="true"><use href="#i-test"/></svg></button>
+    <button class="ib sm led-green" id="btnPower" data-on="true" title="音訊：開（關掉時只印圖不發聲）" aria-label="音訊開關"><svg class="ic i-on" aria-hidden="true"><use href="#i-snd"/></svg><svg class="ic i-off" aria-hidden="true"><use href="#i-mute"/></svg></button>
+    <button class="ib sm led-red pop-x" title="關閉（Esc）" aria-label="關閉"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+  </header>
+  <div class="grp">
+    <div class="pmod-hd">[ VCE ] 音色</div>
+    <div class="opts" id="railVoice"></div>
+  </div>
+  <div class="grp">
+    <div class="pmod-hd">[ SCL ] 音階</div>
+    <div class="opts" id="railScale"></div>
+    <div class="pmod-hd">[ QNT ] 節拍對齊</div>
+    <div class="opts" id="railQuant"></div>
+  </div>
+  <div class="grp">
+    <div class="pmod-hd">[ PITCH / CLOCK ] 音高與速度</div>
+    <div class="knobs" id="knobsPitch"></div>
+  </div>
+  <div class="grp">
+    <div class="pmod-hd">[ FX ] 效果 — 可以同時開好幾個</div>
+    <div class="opts" id="railFx"></div>
+  </div>
+</section>
+
+<section class="pop" id="popColour" hidden aria-label="顏色">
+  <header class="pop-hd">
+    <h2><b>[ SCAN COLOUR ]</b> 掃描線顏色</h2>
+    <button class="ib sm led-red pop-x" title="關閉（Esc）" aria-label="關閉"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+  </header>
+  <div class="grp">
+    <div class="swatches" id="schemeSwatches"></div>
+    <p class="note">畫面上的線和頻譜圖版用同一組顏色。</p>
+  </div>
+  <div class="grp">
+    <div class="pmod-hd">[ CUSTOM ] 自訂顏色</div>
+    <div class="field">
+      <label class="colchip" id="colChip" title="選一個顏色">
+        <input type="color" id="colCustom" value="#3f8296" aria-label="自訂顏色">
+      </label>
+      <div class="seg small" id="segColTarget">
+        <button data-v="all" class="on">ALL<small>全部的線</small></button>
+        <button data-v="sel">SEL<small>選取的線</small></button>
+      </div>
+      <button class="sq-btn tiny led-riso" id="btnColReset"><svg class="ic" aria-hidden="true"><use href="#i-reset"/></svg>清除自訂</button>
+    </div>
+  </div>
+</section>
+
+<section class="pop" id="popOutput" hidden aria-label="輸出">
+  <header class="pop-hd">
+    <h2><b>[ I/O ]</b> 輸出</h2>
+    <button class="ib sm led-red pop-x" title="關閉（Esc）" aria-label="關閉"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+  </header>
+
+  <div class="grp">
+    <div class="pmod-hd">[ RECORD ] 錄製</div>
+    <div class="field">
+      <span class="f-lab">KIND<small>錄什麼</small></span>
+      <div class="seg small" id="segRecKind">
+        <button data-v="audio" class="on">WAV<small>聲音</small></button>
+        <button data-v="video">VIDEO<small>影片</small></button>
+      </div>
+    </div>
+    <div class="field">
+      <span class="f-lab">FRAME<small>影片內容</small></span>
+      <div class="seg small" id="segRecPlate">
+        <button data-v="on" class="on">+ PLATE<small>畫面＋圖版</small></button>
+        <button data-v="off">VIDEO ONLY<small>只有畫面</small></button>
+      </div>
+    </div>
+    <div class="field">
+      <button class="sq-btn led-red" id="ioRec" data-on="false">開始錄製</button>
+      <span class="dr-read" id="recRead">00:00</span>
+    </div>
+    <p class="note" id="recNote">停止後會自動下載。影片會把畫面、偵測線和圖版合成一支檔案（瀏覽器支援就存 mp4，否則 webm）。快捷鍵 R。</p>
+  </div>
+
+  <div class="grp">
+    <div class="pmod-hd">[ MIDI OUT ] MIDI 輸出</div>
+    <div class="field">
+      <button class="sq-btn led-green" id="midiOn" data-on="false">MIDI</button>
+      <span class="dr-read" id="midiStatus">關閉</span>
+    </div>
+    <div class="field">
+      <span class="f-lab">PORT<small>輸出裝置</small></span>
+      <div class="linepick grow">
+        <button class="lp-arrow" id="midiOutPrev" aria-label="上一個裝置">&#9664;</button>
+        <span class="lp-read" id="midiOutRead">—</span>
+        <button class="lp-arrow" id="midiOutNext" aria-label="下一個裝置">&#9654;</button>
+      </div>
+    </div>
+    <div class="field">
+      <span class="f-lab">CH<small>頻道</small></span>
+      <div class="linepick">
+        <button class="lp-arrow" id="midiChPrev" aria-label="上一個頻道">&#9664;</button>
+        <span class="lp-read" id="midiChRead">CH 1</span>
+        <button class="lp-arrow" id="midiChNext" aria-label="下一個頻道">&#9654;</button>
+      </div>
+      <div class="seg small" id="segMidiRoute">
+        <button data-v="all" class="on">1 CH<small>同一頻道</small></button>
+        <button data-v="line">CH / LINE<small>每條線一個</small></button>
+      </div>
+    </div>
+    <div class="field">
+      <span class="f-lab">GATE<small>音符長度</small></span>
+      <div class="seg small" id="segMidiGate">
+        <button data-v="60">60ms</button>
+        <button data-v="140" class="on">140ms</button>
+        <button data-v="400">400ms</button>
+      </div>
+      <button class="sq-btn tiny led-red" id="midiPanic" title="對 16 個頻道送 all notes off"><svg class="ic" aria-hidden="true"><use href="#i-panic"/></svg>全部停止</button>
+    </div>
+    <p class="note" id="midiNote">每次觸發送出 note on／off，時間點與內建音色一致。</p>
+  </div>
+
+  <div class="grp">
+    <div class="pmod-hd">[ STATE ] 分享與保存設定</div>
+    <div class="row">
+      <button class="sq-btn led-riso" id="stLink"><svg class="ic" aria-hidden="true"><use href="#i-link"/></svg>複製連結</button>
+      <button class="sq-btn led-green" id="stSave"><svg class="ic" aria-hidden="true"><use href="#i-save"/></svg>存檔</button>
+      <button class="sq-btn led-amber" id="stLoad"><svg class="ic" aria-hidden="true"><use href="#i-load"/></svg>載入</button>
+    </div>
+    <div class="field">
+      <span class="f-lab">AUTOSAVE<small>自動保存</small></span>
+      <div class="seg small" id="segAutosave">
+        <button data-v="on" class="on">ON</button>
+        <button data-v="off">OFF</button>
+      </div>
+    </div>
+    <input type="file" id="stFile" accept="application/json,.json" hidden>
+    <p class="note">連結會帶上全部設定：參數、音色、線的位置與顏色、主題、版面。影片檔本身不會包含在內。</p>
+  </div>
+</section>
 
 <!-- hidden parameter sources: the knobs read and write these -->
 <div hidden id="paramSrc">
@@ -207,135 +371,11 @@
   <input type="range" id="pVol"   min="0"    max="1"   step="0.01" value="0.8">
 </div>
 
-<!-- I/O drawer: recording, MIDI, state. Settings you set up before playing. -->
-<aside class="drawer panel" id="ioDrawer" hidden>
-  <div class="dr-head">
-    <span class="dr-title">[ I/O ]</span>
-    <button class="sq-btn tiny led-red" id="ioClose">CLOSE</button>
-  </div>
-
-  <section class="dr-sec">
-    <div class="pmod-hd">[ SOURCE ]</div>
-    <div class="dr-row">
-      <button class="sq-btn led-green" id="ioCam" data-on="false">CAMERA</button>
-      <span class="dr-read" id="camStatus">OFF</span>
-    </div>
-    <div class="dr-row">
-      <div class="linepick grow">
-        <button class="lp-arrow" id="camPrev">&#9664;</button>
-        <span class="lp-read" id="camRead">no camera</span>
-        <button class="lp-arrow" id="camNext">&#9654;</button>
-      </div>
-    </div>
-    <div class="dr-row">
-      <span class="dr-lab">MIRROR</span>
-      <div class="seg small" id="segCamMirror">
-        <button data-v="on" class="on">ON</button>
-        <button data-v="off">OFF</button>
-      </div>
-      <button class="sq-btn tiny led-amber" id="ioFile">VIDEO FILE</button>
-    </div>
-    <p class="dr-note" id="camNote">攝影機畫面只留在這台電腦，不會上傳。MIRROR 開著時預覽和偵測一起左右翻，動作方向跟你看到的一致。快捷鍵 C。</p>
-  </section>
-
-  <section class="dr-sec">
-    <div class="pmod-hd">[ RECORD ]</div>
-    <div class="dr-row">
-      <div class="seg small" id="segRecKind">
-        <button data-v="audio" class="on">AUDIO &rarr; WAV</button>
-        <button data-v="video">VIDEO</button>
-      </div>
-    </div>
-    <div class="dr-row">
-      <div class="seg small" id="segRecPlate">
-        <button data-v="on" class="on">+ PLATE</button>
-        <button data-v="off">VIDEO ONLY</button>
-      </div>
-    </div>
-    <div class="dr-row">
-      <button class="sq-btn led-red" id="ioRec" data-on="false">REC</button>
-      <span class="dr-read" id="recRead">00:00</span>
-    </div>
-    <p class="dr-note" id="recNote">錄音存成 WAV；影片會把畫面、掃描線與圖版合成一支檔案（瀏覽器支援 mp4 時存 mp4，否則 webm）。快捷鍵 R。</p>
-  </section>
-
-  <section class="dr-sec">
-    <div class="pmod-hd">[ MIDI OUT ]</div>
-    <div class="dr-row">
-      <button class="sq-btn led-green" id="midiOn" data-on="false">MIDI</button>
-      <span class="dr-read" id="midiStatus">OFF</span>
-    </div>
-    <div class="dr-row">
-      <div class="linepick grow">
-        <button class="lp-arrow" id="midiOutPrev">&#9664;</button>
-        <span class="lp-read" id="midiOutRead">no output</span>
-        <button class="lp-arrow" id="midiOutNext">&#9654;</button>
-      </div>
-    </div>
-    <div class="dr-row">
-      <div class="linepick">
-        <button class="lp-arrow" id="midiChPrev">&#9664;</button>
-        <span class="lp-read" id="midiChRead">CH 1</span>
-        <button class="lp-arrow" id="midiChNext">&#9654;</button>
-      </div>
-      <div class="seg small" id="segMidiRoute">
-        <button data-v="all" class="on">1 CH</button>
-        <button data-v="line">CH / LINE</button>
-      </div>
-    </div>
-    <div class="dr-row">
-      <span class="dr-lab">GATE</span>
-      <div class="seg small" id="segMidiGate">
-        <button data-v="60">60ms</button>
-        <button data-v="140" class="on">140ms</button>
-        <button data-v="400">400ms</button>
-      </div>
-      <button class="sq-btn tiny led-red" id="midiPanic">PANIC</button>
-    </div>
-    <p class="dr-note" id="midiNote">觸發同時送出 note on/off，與內建音色同一個量化時間點。CH / LINE：第 N 條線走第 N 個頻道，方便在 DAW 分軌。</p>
-  </section>
-
-  <section class="dr-sec">
-    <div class="pmod-hd">[ STATE ]</div>
-    <div class="dr-row wrap">
-      <button class="sq-btn led-riso" id="stLink">COPY LINK</button>
-      <button class="sq-btn led-green" id="stSave">SAVE</button>
-      <button class="sq-btn led-amber" id="stLoad">LOAD</button>
-    </div>
-    <div class="dr-row">
-      <span class="dr-lab">AUTOSAVE</span>
-      <div class="seg small" id="segAutosave">
-        <button data-v="on" class="on">ON</button>
-        <button data-v="off">OFF</button>
-      </div>
-    </div>
-    <input type="file" id="stFile" accept="application/json,.json" hidden>
-    <p class="dr-note">連結會帶上全部設定：參數、音階、音色、效果、線段位置與顏色、配色、主題、版面。影片檔本身不會包含在內。</p>
-  </section>
-</aside>
-
-<!-- stage-only mode: the only chrome left on screen -->
-<div class="stagebar" id="stageBar">
-  <button class="sq-btn tiny led-red" id="sbExit">EXIT</button>
-  <button class="sq-btn tiny led-green" id="sbPlay">PLAY</button>
-  <span class="sb-sep"></span>
-  <button class="sq-btn tiny" id="sbAddH">+H</button>
-  <button class="sq-btn tiny" id="sbAddV">+V</button>
-  <button class="sq-btn tiny led-red" id="sbDel">DEL</button>
-  <span class="sb-sep"></span>
-  <button class="sq-btn tiny led-green" id="sbPlate" data-on="true">PLATE</button>
-  <button class="sq-btn tiny led-riso" id="sbLines" data-on="true">LINES</button>
-  <button class="sq-btn tiny led-red" id="sbRec" data-on="false">REC</button>
-  <span class="sb-sep"></span>
-  <button class="sq-btn tiny" id="sbPrev">&#9664;</button>
-  <span class="sb-read" id="sbRead">--</span>
-  <button class="sq-btn tiny" id="sbNext">&#9654;</button>
-</div>
-
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="js/palette.js"></script>
 <script src="js/knob.js"></script>
+<script src="js/popover.js"></script>
 <script src="js/audio-engine.js"></script>
 <script src="js/detector.js"></script>
 <script src="js/spectro.js"></script>
